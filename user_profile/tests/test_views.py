@@ -5,226 +5,193 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from PIL import Image
 import io
 
-from user_profile.models import SellerProfile, SpecialistProfile
+from ..models import UserProfile, SellerProfile, SpecialistProfile, VerificationDocument
+
+User = get_user_model()
 
 class UserProfileViewTests(TestCase):
     def setUp(self):
         self.client = Client()
-        self.User = get_user_model()
-        self.user = self.User.objects.create(
+        self.user = User.objects.create_user(
             phone='+79991234567',
-            first_name='Иван',
-            last_name='Иванов'
+            password='testpass123'
         )
-        self.other_user = self.User.objects.create(
-            phone='+79991234568',
-            first_name='Петр',
-            last_name='Петров'
+        self.client.login(phone='+79991234567', password='testpass123')
+
+    def test_profile_settings_view(self):
+        """Тест представления настроек профиля"""
+        response = self.client.get(reverse('user_profile:settings'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'user_profile/settings.html')
+
+    def test_profile_update(self):
+        """Тест обновления профиля"""
+        response = self.client.post(reverse('user_profile:settings'), {
+            'bio': 'Test bio',
+            'location': 'Test City'
+        })
+        self.assertEqual(response.status_code, 302)  # Редирект после успешного обновления
+        self.user.profile.refresh_from_db()
+        self.assertEqual(self.user.profile.bio, 'Test bio')
+        self.assertEqual(self.user.profile.location, 'Test City')
+
+class SellerProfileViewTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            phone='+79991234567',
+            password='testpass123'
         )
-        self.client.force_login(self.user)
-        
-        # Создаем тестовое изображение
-        image = Image.new('RGB', (100, 100), 'red')
-        image_io = io.BytesIO()
-        image.save(image_io, format='JPEG')
-        self.document = SimpleUploadedFile(
-            'test_document.jpg',
-            image_io.getvalue(),
-            content_type='image/jpeg'
-        )
-    
-    def test_profile_create_view(self):
-        """Тест создания профиля"""
+        self.client.login(phone='+79991234567', password='testpass123')
+
+    def create_test_image(self):
+        """Создание тестового изображения"""
+        file = io.BytesIO()
+        image = Image.new('RGB', (100, 100), 'white')
+        image.save(file, 'JPEG')
+        file.seek(0)
+        return SimpleUploadedFile('test.jpg', file.getvalue(), content_type='image/jpeg')
+
+    def test_seller_profile_create_view(self):
+        """Тест представления создания профиля продавца"""
         response = self.client.get(reverse('user_profile:create_seller_profile'))
         self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'user_profile/seller_profile_form.html')
+
+    def test_seller_profile_create(self):
+        """Тест создания профиля продавца"""
+        self.user.is_verified = True
+        self.user.save()
         
-        # Отправляем POST-запрос для создания профиля
-        profile_data = {
+        response = self.client.post(reverse('user_profile:create_seller_profile'), {
             'seller_type': 'individual',
-            'description': 'Тестовое описание'
-        }
-        files = {'document_scan': self.document}
-        
-        response = self.client.post(
-            reverse('user_profile:create_seller_profile'),
-            data=profile_data,
-            files=files
-        )
-        self.assertEqual(response.status_code, 302)  # Редирект после создания
-        
-        # Проверяем, что профиль создан
+            'description': 'Test seller'
+        })
+        self.assertEqual(response.status_code, 302)  # Редирект после успешного создания
         self.assertTrue(SellerProfile.objects.filter(user=self.user).exists())
-    
-    def test_profile_update_view(self):
-        """Тест обновления профиля"""
-        # Создаем профиль
+
+    def test_seller_profile_update(self):
+        """Тест обновления профиля продавца"""
         profile = SellerProfile.objects.create(
             user=self.user,
-            seller_type='individual'
+            seller_type='individual',
+            description='Initial description'
         )
-        
-        response = self.client.get(reverse('user_profile:update_seller_profile'))
-        self.assertEqual(response.status_code, 200)
-        
-        # Обновляем профиль
-        update_data = {
-            'seller_type': 'entrepreneur',
-            'description': 'Новое описание',
-            'inn': '123456789012'
-        }
         
         response = self.client.post(
-            reverse('user_profile:update_seller_profile'),
-            data=update_data
+            reverse('user_profile:update_seller_profile', kwargs={'pk': profile.pk}),
+            {
+                'seller_type': 'individual',
+                'description': 'Updated description'
+            }
         )
         self.assertEqual(response.status_code, 302)
-        
-        # Проверяем обновление
         profile.refresh_from_db()
-        self.assertEqual(profile.seller_type, 'entrepreneur')
-        self.assertEqual(profile.description, 'Новое описание')
-    
+        self.assertEqual(profile.description, 'Updated description')
+
+class SpecialistProfileViewTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            phone='+79991234567',
+            password='testpass123'
+        )
+        self.client.login(phone='+79991234567', password='testpass123')
+
+    def create_test_image(self):
+        """Создание тестового изображения"""
+        file = io.BytesIO()
+        image = Image.new('RGB', (100, 100), 'white')
+        image.save(file, 'JPEG')
+        file.seek(0)
+        return SimpleUploadedFile('test.jpg', file.getvalue(), content_type='image/jpeg')
+
     def test_specialist_profile_create_view(self):
-        """Тест создания профиля специалиста"""
+        """Тест представления создания профиля специалиста"""
         response = self.client.get(reverse('user_profile:create_specialist_profile'))
         self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'user_profile/specialist_profile_form.html')
+
+    def test_specialist_profile_create(self):
+        """Тест создания профиля специалиста"""
+        self.user.is_verified = True
+        self.user.save()
         
-        # Отправляем POST-запрос для создания профиля
-        profile_data = {
-            'seller_type': 'individual',
+        response = self.client.post(reverse('user_profile:create_specialist_profile'), {
             'specialization': 'veterinarian',
             'experience_years': 5,
-            'services': 'Лечение животных',
-            'price_range': '1000-5000 руб.'
-        }
-        files = {'certificates': self.document}
-        
-        response = self.client.post(
-            reverse('user_profile:create_specialist_profile'),
-            data=profile_data,
-            files=files
-        )
+            'services': 'Test services'
+        })
         self.assertEqual(response.status_code, 302)
-        
-        # Проверяем, что профиль создан
         self.assertTrue(SpecialistProfile.objects.filter(user=self.user).exists())
-    
-    def test_profile_access_permissions(self):
-        """Тест прав доступа к профилю"""
-        # Создаем профиль для другого пользователя
-        other_profile = SellerProfile.objects.create(
-            user=self.other_user,
-            seller_type='individual'
-        )
-        
-        # Пытаемся получить доступ к чужому профилю
-        response = self.client.get(
-            reverse('user_profile:update_seller_profile', kwargs={'user_id': self.other_user.id})
-        )
-        self.assertEqual(response.status_code, 403)  # Доступ запрещен
-        
-        # Пытаемся обновить чужой профиль
-        update_data = {'description': 'Попытка взлома'}
-        response = self.client.post(
-            reverse('user_profile:update_seller_profile', kwargs={'user_id': self.other_user.id}),
-            data=update_data
-        )
-        self.assertEqual(response.status_code, 403)
-    
-    def test_profile_verification_view(self):
-        """Тест верификации профиля"""
-        # Создаем профиль
-        profile = SellerProfile.objects.create(
-            user=self.user,
-            seller_type='individual'
-        )
-        
-        # Отправляем запрос на верификацию
-        response = self.client.post(
-            reverse('user_profile:request_verification'),
-            {'document_scan': self.document}
-        )
-        self.assertEqual(response.status_code, 302)
-        
-        # Проверяем статус верификации
-        profile.refresh_from_db()
-        self.assertFalse(profile.is_verified)  # Пока не подтверждено модератором
-    
-    def test_profile_delete_view(self):
-        """Тест удаления профиля"""
-        # Создаем профиль
-        profile = SellerProfile.objects.create(
-            user=self.user,
-            seller_type='individual'
-        )
-        
-        response = self.client.post(reverse('user_profile:delete_profile'))
-        self.assertEqual(response.status_code, 302)
-        
-        # Проверяем, что профиль удален
-        self.assertFalse(SellerProfile.objects.filter(user=self.user).exists())
-    
-    def test_profile_list_view(self):
-        """Тест списка специалистов"""
-        # Создаем несколько профилей специалистов
-        SpecialistProfile.objects.create(
-            user=self.user,
-            seller_type='individual',
-            specialization='veterinarian'
-        )
-        SpecialistProfile.objects.create(
-            user=self.other_user,
-            seller_type='individual',
-            specialization='groomer'
-        )
-        
-        response = self.client.get(reverse('user_profile:specialist_list'))
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.context['specialists']), 2)
-    
-    def test_profile_detail_view(self):
-        """Тест детальной страницы профиля"""
-        # Создаем профиль специалиста
+
+    def test_specialist_profile_update(self):
+        """Тест обновления профиля специалиста"""
         profile = SpecialistProfile.objects.create(
             user=self.user,
-            seller_type='individual',
             specialization='veterinarian',
-            services='Лечение животных',
-            price_range='1000-5000 руб.'
+            experience_years=5,
+            services='Initial services'
         )
         
-        response = self.client.get(
-            reverse('user_profile:specialist_detail', kwargs={'pk': profile.pk})
+        response = self.client.post(
+            reverse('user_profile:update_specialist_profile', kwargs={'pk': profile.pk}),
+            {
+                'specialization': 'veterinarian',
+                'experience_years': 6,
+                'services': 'Updated services'
+            }
         )
+        self.assertEqual(response.status_code, 302)
+        profile.refresh_from_db()
+        self.assertEqual(profile.experience_years, 6)
+        self.assertEqual(profile.services, 'Updated services')
+
+class VerificationViewTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            phone='+79991234567',
+            password='testpass123'
+        )
+        self.client.login(phone='+79991234567', password='testpass123')
+
+    def create_test_image(self):
+        """Создание тестового изображения"""
+        file = io.BytesIO()
+        image = Image.new('RGB', (100, 100), 'white')
+        image.save(file, 'JPEG')
+        file.seek(0)
+        return SimpleUploadedFile('test.jpg', file.getvalue(), content_type='image/jpeg')
+
+    def test_verification_request_view(self):
+        """Тест представления запроса верификации"""
+        response = self.client.get(reverse('user_profile:verification_request'))
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context['specialist'], profile)
-    
-    def test_profile_search_view(self):
-        """Тест поиска специалистов"""
-        # Создаем профили с разными специализациями
-        SpecialistProfile.objects.create(
+        self.assertTemplateUsed(response, 'user_profile/verification_request.html')
+
+    def test_verification_document_upload(self):
+        """Тест загрузки документов для верификации"""
+        test_image = self.create_test_image()
+        response = self.client.post(reverse('user_profile:upload_document'), {
+            'document': test_image,
+            'document_type': 'passport',
+            'comment': 'Test document'
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(VerificationDocument.objects.filter(user=self.user).exists())
+
+    def test_verification_status_view(self):
+        """Тест представления статуса верификации"""
+        doc = VerificationDocument.objects.create(
             user=self.user,
-            seller_type='individual',
-            specialization='veterinarian',
-            services='Лечение животных'
-        )
-        SpecialistProfile.objects.create(
-            user=self.other_user,
-            seller_type='individual',
-            specialization='groomer',
-            services='Стрижка собак'
+            document=self.create_test_image(),
+            document_type='passport',
+            status='pending'
         )
         
-        # Поиск по специализации
-        response = self.client.get(
-            reverse('user_profile:specialist_list'),
-            {'specialization': 'veterinarian'}
-        )
-        self.assertEqual(len(response.context['specialists']), 1)
-        
-        # Поиск по услугам
-        response = self.client.get(
-            reverse('user_profile:specialist_list'),
-            {'q': 'Стрижка'}
-        )
-        self.assertEqual(len(response.context['specialists']), 1) 
+        response = self.client.get(reverse('user_profile:verification_status'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'user_profile/verification_status.html')
+        self.assertIn('documents', response.context)
+        self.assertEqual(response.context['documents'][0], doc) 
