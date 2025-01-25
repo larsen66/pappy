@@ -31,7 +31,16 @@ class AnnouncementTests(TestCase):
             'description': 'Test Description',
             'price': 1000,
             'category': self.category.id,
-            'type': 'animal'
+            'type': 'animal',
+            'location': 'Test City',
+            'status': 'moderation',
+            'species': 'dog',
+            'breed': 'Labrador',
+            'age': 2,
+            'gender': 'male',
+            'size': 'medium',
+            'color': 'black',
+            'vaccinated': True
         })
         self.assertEqual(response.status_code, 302)
         self.assertTrue(Announcement.objects.filter(title='Test Announcement').exists())
@@ -44,7 +53,9 @@ class AnnouncementTests(TestCase):
             price=1000,
             category=self.category,
             author=self.user,
-            type='animal'
+            type='animal',
+            location='Test City',
+            status='moderation'
         )
         
         response = self.client.post(
@@ -54,7 +65,16 @@ class AnnouncementTests(TestCase):
                 'description': 'Updated Description',
                 'price': 2000,
                 'category': self.category.id,
-                'type': 'animal'
+                'type': 'animal',
+                'location': 'Updated City',
+                'status': 'moderation',
+                'species': 'dog',
+                'breed': 'Labrador',
+                'age': 2,
+                'gender': 'male',
+                'size': 'medium',
+                'color': 'black',
+                'vaccinated': True
             }
         )
         
@@ -71,7 +91,8 @@ class AnnouncementTests(TestCase):
             price=1000,
             category=self.category,
             author=self.user,
-            type='animal'
+            type='animal',
+            location='Test City'
         )
         
         response = self.client.post(
@@ -89,7 +110,8 @@ class AnnouncementTests(TestCase):
             price=1000,
             category=self.category,
             author=self.user,
-            type='animal'
+            type='animal',
+            location='Test City'
         )
         Announcement.objects.create(
             title='Test Announcement 2',
@@ -97,7 +119,8 @@ class AnnouncementTests(TestCase):
             price=2000,
             category=self.category,
             author=self.user,
-            type='service'
+            type='service',
+            location='Test City'
         )
         
         response = self.client.get(reverse('announcements:list'))
@@ -112,7 +135,8 @@ class AnnouncementTests(TestCase):
             price=1000,
             category=self.category,
             author=self.user,
-            type='animal'
+            type='animal',
+            location='Test City'
         )
         Announcement.objects.create(
             title='Cat Announcement',
@@ -120,7 +144,8 @@ class AnnouncementTests(TestCase):
             price=2000,
             category=self.category,
             author=self.user,
-            type='animal'
+            type='animal',
+            location='Test City'
         )
         
         response = self.client.get(reverse('announcements:list'), {'q': 'dog'})
@@ -153,8 +178,11 @@ class AnimalAnnouncementTests(TestCase):
             'breed': 'Labrador',
             'age': 2,
             'gender': 'male',
+            'size': 'medium',
             'color': 'black',
-            'vaccinated': True
+            'vaccinated': True,
+            'location': 'Test City',
+            'status': 'moderation'
         })
         
         self.assertEqual(response.status_code, 302)
@@ -185,11 +213,13 @@ class ServiceAnnouncementTests(TestCase):
             'price': 1000,
             'category': self.category.id,
             'service_type': 'grooming',
-            'duration': '1 hour',
-            'location': 'Test City'
+            'experience': 2,
+            'schedule': 'Mon-Fri 9-18',
+            'location': 'Test City',
+            'status': 'moderation'
         })
         
         self.assertEqual(response.status_code, 302)
         announcement = ServiceAnnouncement.objects.first()
         self.assertEqual(announcement.service_type, 'grooming')
-        self.assertEqual(announcement.duration, '1 hour')
+        self.assertEqual(announcement.schedule, 'Mon-Fri 9-18')

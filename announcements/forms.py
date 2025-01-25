@@ -14,40 +14,46 @@ class AnnouncementForm(forms.ModelForm):
     """Base form for all announcements"""
     class Meta:
         model = Announcement
-        fields = ['title', 'description', 'category', 'type', 'price', 'location']
+        fields = ['title', 'description', 'category', 'price', 'location', 'status']
         widgets = {
             'description': forms.Textarea(attrs={'rows': 5}),
         }
 
-class AnimalAnnouncementForm(forms.ModelForm):
-    class Meta:
+class AnimalAnnouncementForm(AnnouncementForm):
+    class Meta(AnnouncementForm.Meta):
         model = AnimalAnnouncement
-        fields = ['species', 'breed', 'age', 'gender', 'size', 'color',
-                 'pedigree', 'vaccinated', 'passport', 'microchipped']
+        fields = AnnouncementForm.Meta.fields + [
+            'species', 'breed', 'age', 'gender', 'size', 'color',
+            'pedigree', 'vaccinated', 'passport', 'microchipped'
+        ]
 
-class ServiceAnnouncementForm(forms.ModelForm):
-    class Meta:
+class ServiceAnnouncementForm(AnnouncementForm):
+    class Meta(AnnouncementForm.Meta):
         model = ServiceAnnouncement
-        fields = ['service_type', 'experience', 'certificates', 'schedule']
+        fields = AnnouncementForm.Meta.fields + [
+            'service_type', 'experience', 'certificates', 'schedule'
+        ]
         widgets = {
+            **AnnouncementForm.Meta.widgets,
             'certificates': forms.Textarea(attrs={'rows': 3}),
             'schedule': forms.Textarea(attrs={'rows': 3}),
         }
 
-class MatingAnnouncementForm(forms.ModelForm):
+class MatingAnnouncementForm(AnnouncementForm):
     """Form for mating announcements"""
-    class Meta:
+    class Meta(AnnouncementForm.Meta):
         model = MatingAnnouncement
-        fields = ['requirements', 'achievements']
+        fields = AnnouncementForm.Meta.fields + ['requirements', 'achievements']
         widgets = {
+            **AnnouncementForm.Meta.widgets,
             'requirements': forms.Textarea(attrs={'rows': 3}),
             'achievements': forms.Textarea(attrs={'rows': 3}),
         }
 
-class LostFoundAnnouncementForm(forms.ModelForm):
-    class Meta:
+class LostFoundAnnouncementForm(AnnouncementForm):
+    class Meta(AnnouncementForm.Meta):
         model = LostFoundAnnouncement
-        fields = ['type', 'date_lost_found', 'distinctive_features']
+        fields = AnnouncementForm.Meta.fields + ['type', 'date_lost_found', 'distinctive_features']
         widgets = {
             'date_lost_found': forms.DateInput(attrs={'type': 'date'}),
             'distinctive_features': forms.Textarea(attrs={'rows': 3}),
