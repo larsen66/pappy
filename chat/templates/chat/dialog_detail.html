@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Диалог | Паппи{% endblock %}
+
+{% block content %}
+<div class="chat-container">
+    <div class="chat-header">
+        <a href="{% url 'chat:dialogs_list' %}" class="back-button">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+        
+        <div class="chat-product">
+            <a href="{% url 'catalog:product_detail' dialog.product.slug %}" class="product-link">
+                {% if dialog.product.images.exists %}
+                <img src="{{ dialog.product.images.first.image.url }}" alt="{{ dialog.product.title }}">
+                {% else %}
+                <div class="no-image">
+                    <i class="fas fa-image"></i>
+                </div>
+                {% endif %}
+                <div class="product-info">
+                    <h2 class="product-title">{{ dialog.product.title }}</h2>
+                    <p class="product-price">{{ dialog.product.price }} ₽</p>
+                </div>
+            </a>
+        </div>
+        
+        {% for participant in dialog.participants.all %}
+            {% if participant != request.user %}
+            <div class="chat-participant">
+                {% if participant.avatar %}
+                <img src="{{ participant.avatar.url }}" alt="{{ participant.get_full_name }}" class="avatar">
+                {% else %}
+                <div class="avatar-placeholder">
+                    {{ participant.get_full_name|first }}
+                </div>
+                {% endif %}
+                <div class="participant-info">
+                    <span class="participant-name">{{ participant.get_full_name }}</span>
+                    {% if participant.is_verified %}
+                    <span class="verified-badge">
+                        <i class="fas fa-check-circle"></i> Проверенный продавец
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+    
+    <div class="chat-messages" id="chat-messages">
+        {% for message in messages %}
+        <div class="message {% if message.sender == request.user %}own{% endif %}" data-message-id="{{ message.id }}">
+            <div class="message-content">
+                <div class="message-text">{{ message.text }}</div>
+                <div class="message-meta">
+                    <span class="message-time">{{ message.created|date:"H:i" }}</span>
+                    {% if message.sender == request.user %}
+                    <span class="message-status">
+                        {% if message.is_read %}
+                        <i class="fas fa-check-double"></i>
+                        {% else %}
+                        <i class="fas fa-check"></i>
+                        {% endif %}
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <div class="chat-input">
+        <form id="message-form" class="message-form">
+            {% csrf_token %}
+            <textarea name="text" id="message-text" placeholder="Введите сообщение..." rows="1"></textarea>
+            <button type="submit" class="send-button">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/chat.css' %}">
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const dialogId = {{ dialog.id }};
+    const lastMessageId = {% if messages.exists %}{{ messages.last.id }}{% else %}0{% endif %};
+</script>
+<script src="{% static 'js/chat.js' %}"></script>
+{% endblock %} 

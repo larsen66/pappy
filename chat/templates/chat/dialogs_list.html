@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Сообщения | Паппи{% endblock %}
+
+{% block content %}
+<div class="dialogs-container">
+    <h1 class="page-title">Сообщения</h1>
+    
+    {% if dialogs %}
+    <div class="dialogs-list">
+        {% for dialog in dialogs %}
+        <a href="{% url 'chat:dialog_detail' dialog.id %}" class="dialog-item">
+            <div class="dialog-product">
+                {% if dialog.product.images.exists %}
+                <img src="{{ dialog.product.images.first.image.url }}" alt="{{ dialog.product.title }}">
+                {% else %}
+                <div class="no-image">
+                    <i class="fas fa-image"></i>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="dialog-info">
+                <div class="dialog-header">
+                    <h3 class="product-title">{{ dialog.product.title }}</h3>
+                    <span class="dialog-time">
+                        {% if dialog.last_message_time %}
+                            {{ dialog.last_message_time|date:"d.m.Y H:i" }}
+                        {% else %}
+                            {{ dialog.created|date:"d.m.Y H:i" }}
+                        {% endif %}
+                    </span>
+                </div>
+                
+                <div class="dialog-participants">
+                    {% for participant in dialog.participants.all %}
+                        {% if participant != request.user %}
+                        <div class="participant">
+                            {% if participant.avatar %}
+                            <img src="{{ participant.avatar.url }}" alt="{{ participant.get_full_name }}" class="avatar">
+                            {% else %}
+                            <div class="avatar-placeholder">
+                                {{ participant.get_full_name|first }}
+                            </div>
+                            {% endif %}
+                            <span class="participant-name">{{ participant.get_full_name }}</span>
+                            {% if participant.is_verified %}
+                            <span class="verified-badge">
+                                <i class="fas fa-check-circle"></i>
+                            </span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                
+                {% if dialog.messages.exists %}
+                <div class="last-message">
+                    {% with last_message=dialog.messages.last %}
+                    <span class="sender">
+                        {% if last_message.sender == request.user %}
+                        Вы:
+                        {% else %}
+                        {{ last_message.sender.get_full_name }}:
+                        {% endif %}
+                    </span>
+                    <span class="message-text">{{ last_message.text|truncatechars:50 }}</span>
+                    {% if not last_message.is_read and last_message.sender != request.user %}
+                    <span class="unread-badge">Новое</span>
+                    {% endif %}
+                    {% endwith %}
+                </div>
+                {% else %}
+                <div class="no-messages">
+                    Нет сообщений
+                </div>
+                {% endif %}
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="no-dialogs">
+        <i class="fas fa-comments"></i>
+        <h2>У вас пока нет сообщений</h2>
+        <p>Начните общаться с продавцами, чтобы найти питомца мечты</p>
+        <a href="{% url 'catalog:home' %}" class="btn btn-primary">
+            <i class="fas fa-search"></i> Искать объявления
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/chat.css' %}">
+{% endblock %} 

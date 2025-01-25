@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Котопсиндер | Паппи{% endblock %}
+
+{% block content %}
+<div class="kotopsinder">
+    <div class="swipe-container">
+        <div class="card-stack" id="card-stack">
+            {% for product in products %}
+            <div class="card" data-product-id="{{ product.id }}">
+                <div class="card-images">
+                    {% if product.images.exists %}
+                    <div class="image-slider">
+                        {% for image in product.images.all %}
+                        <div class="slide {% if forloop.first %}active{% endif %}">
+                            <img src="{{ image.image.url }}" alt="{{ product.title }}">
+                        </div>
+                        {% endfor %}
+                        {% if product.images.count > 1 %}
+                        <div class="slider-nav">
+                            <button class="prev-slide" aria-label="Предыдущее фото">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <div class="slide-dots">
+                                {% for image in product.images.all %}
+                                <span class="dot {% if forloop.first %}active{% endif %}"></span>
+                                {% endfor %}
+                            </div>
+                            <button class="next-slide" aria-label="Следующее фото">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <div class="no-image">
+                        <img src="{% static 'images/no-image.png' %}" alt="Нет фото">
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="card-info">
+                    <h2 class="product-title">{{ product.title }}</h2>
+                    <p class="product-price">{{ product.price }} ₽</p>
+                    
+                    <div class="product-meta">
+                        <span class="location">
+                            <i class="fas fa-map-marker-alt"></i> {{ product.location }}
+                        </span>
+                        <span class="category">
+                            <i class="fas fa-tag"></i> {{ product.category.name }}
+                        </span>
+                    </div>
+
+                    <div class="seller-info">
+                        <div class="seller-avatar">
+                            {% if product.seller.avatar %}
+                            <img src="{{ product.seller.avatar.url }}" alt="{{ product.seller.get_full_name }}">
+                            {% else %}
+                            <div class="avatar-placeholder">
+                                {{ product.seller.get_full_name|first }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="seller-details">
+                            <span class="seller-name">{{ product.seller.get_full_name }}</span>
+                            {% if product.seller.is_verified %}
+                            <span class="verified-badge">
+                                <i class="fas fa-check-circle"></i> Проверенный продавец
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="product-description">
+                        {{ product.description|linebreaks }}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="swipe-buttons">
+            <button class="swipe-button dislike" id="dislike-button" aria-label="Не нравится">
+                <i class="fas fa-times"></i>
+            </button>
+            <button class="swipe-button undo" id="undo-button" aria-label="Вернуться">
+                <i class="fas fa-undo"></i>
+            </button>
+            <button class="swipe-button like" id="like-button" aria-label="Нравится">
+                <i class="fas fa-heart"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="no-more-cards" style="display: none;">
+        <div class="message">
+            <i class="fas fa-paw"></i>
+            <h3>Пока больше нет объявлений</h3>
+            <p>Загляните позже или измените параметры поиска</p>
+            <a href="{% url 'catalog:home' %}" class="btn btn-primary">
+                <i class="fas fa-home"></i> На главную
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для уведомления о лайке -->
+<div class="match-modal" id="match-modal">
+    <div class="modal-content">
+        <h3>Отлично!</h3>
+        <p>Вы можете найти это объявление в разделе "Сообщения"</p>
+        <div class="modal-buttons">
+            <button class="btn btn-secondary" onclick="closeMatchModal()">Продолжить</button>
+            <a href="" class="btn btn-primary" id="go-to-chat">Перейти в чат</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/kotopsinder.css' %}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/kotopsinder.js' %}"></script>
+{% endblock %} 
