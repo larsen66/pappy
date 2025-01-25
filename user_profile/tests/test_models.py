@@ -5,159 +5,217 @@ from django.utils import timezone
 from PIL import Image
 import io
 
-from user_profile.models import SellerProfile, SpecialistProfile
+from user_profile.models import UserProfile, SellerProfile, SpecialistProfile, VerificationDocument, Review
+
+User = get_user_model()
+
+class UserProfileTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            phone='+79991234567',
+            password='testpass123'
+        )
+
+    def test_user_profile_creation(self):
+        """Тест автоматического создания профиля пользователя"""
+        self.assertTrue(hasattr(self.user, 'profile'))
+        self.assertIsInstance(self.user.profile, UserProfile)
+
+    def test_profile_str(self):
+        """Тест строкового представления профиля"""
+        expected = f'Профиль пользователя {self.user.phone}'
+        self.assertEqual(str(self.user.profile), expected)
 
 class SellerProfileTests(TestCase):
     def setUp(self):
-        self.User = get_user_model()
-        self.user = self.User.objects.create(
+        self.user = User.objects.create_user(
             phone='+79991234567',
-            first_name='Иван',
-            last_name='Иванов'
+            password='testpass123',
+            is_seller=True
         )
-        
-        # Создаем тестовое изображение
-        image = Image.new('RGB', (100, 100), 'red')
-        image_io = io.BytesIO()
-        image.save(image_io, format='JPEG')
-        self.document = SimpleUploadedFile(
-            'test_document.jpg',
-            image_io.getvalue(),
-            content_type='image/jpeg'
-        )
-    
-    def test_seller_profile_creation(self):
-        """Тест создания профиля продавца"""
-        profile = SellerProfile.objects.create(
+        self.seller_profile = SellerProfile.objects.create(
             user=self.user,
             seller_type='individual',
-            description='Тестовое описание',
-            document_scan=self.document
+            description='Test seller'
         )
-        
-        self.assertEqual(profile.user, self.user)
-        self.assertEqual(profile.seller_type, 'individual')
-        self.assertEqual(profile.description, 'Тестовое описание')
-        self.assertTrue(profile.document_scan)
-        self.assertFalse(profile.is_verified)
-    
+
+    def test_seller_profile_creation(self):
+        """Тест создания профиля продавца"""
+        self.assertTrue(hasattr(self.user, 'seller_profile'))
+        self.assertEqual(self.seller_profile.seller_type, 'individual')
+        self.assertEqual(self.seller_profile.description, 'Test seller')
+
     def test_seller_profile_str(self):
         """Тест строкового представления профиля продавца"""
-        profile = SellerProfile.objects.create(
-            user=self.user,
-            seller_type='individual'
+        expected = f'Профиль продавца {self.user.phone}'
+        self.assertEqual(str(self.seller_profile), expected)
+
+    def test_seller_rating_calculation(self):
+        """Тест расчета рейтинга продавца"""
+        # Создаем отзывы
+        other_user = User.objects.create_user(
+            phone='+79991234568',
+            password='testpass123'
         )
-        expected_str = f'Профиль продавца {self.user.get_full_name()}'
-        self.assertEqual(str(profile), expected_str)
-    
-    def test_seller_profile_verification(self):
-        """Тест верификации профиля продавца"""
-        profile = SellerProfile.objects.create(
-            user=self.user,
-            seller_type='individual'
+        Review.objects.create(
+            author=other_user,
+            seller=self.user,
+            rating=5,
+            comment='Excellent'
         )
-        
-        # Верифицируем профиль
-        profile.is_verified = True
-        profile.verification_date = timezone.now()
-        profile.save()
-        
-        profile.refresh_from_db()
-        self.assertTrue(profile.is_verified)
-        self.assertIsNotNone(profile.verification_date)
-    
-    def test_seller_profile_company_info(self):
-        """Тест информации о компании"""
-        profile = SellerProfile.objects.create(
-            user=self.user,
-            seller_type='company',
-            company_name='ООО Тест',
-            inn='1234567890',
-            website='http://test.com'
+        Review.objects.create(
+            author=other_user,
+            seller=self.user,
+            rating=4,
+            comment='Good'
         )
         
-        self.assertEqual(profile.seller_type, 'company')
-        self.assertEqual(profile.company_name, 'ООО Тест')
-        self.assertEqual(profile.inn, '1234567890')
-        self.assertEqual(profile.website, 'http://test.com')
+        self.assertEqual(self.seller_profile.rating, 4.5)
 
 class SpecialistProfileTests(TestCase):
     def setUp(self):
-        self.User = get_user_model()
-        self.user = self.User.objects.create(
+        self.user = User.objects.create_user(
             phone='+79991234567',
-            first_name='Иван',
-            last_name='Иванов'
+            password='testpass123',
+            is_specialist=True
         )
-        
-        # Создаем тестовое изображение
-        image = Image.new('RGB', (100, 100), 'red')
-        image_io = io.BytesIO()
-        image.save(image_io, format='JPEG')
-        self.certificate = SimpleUploadedFile(
-            'test_certificate.jpg',
-            image_io.getvalue(),
-            content_type='image/jpeg'
-        )
-    
-    def test_specialist_profile_creation(self):
-        """Тест создания профиля специалиста"""
-        profile = SpecialistProfile.objects.create(
+        self.specialist_profile = SpecialistProfile.objects.create(
             user=self.user,
-            seller_type='individual',
             specialization='veterinarian',
             experience_years=5,
-            services='Лечение животных',
-            price_range='1000-5000 руб.',
-            certificates=self.certificate
+            services='Test services'
         )
-        
-        self.assertEqual(profile.user, self.user)
-        self.assertEqual(profile.specialization, 'veterinarian')
-        self.assertEqual(profile.experience_years, 5)
-        self.assertEqual(profile.services, 'Лечение животных')
-        self.assertEqual(profile.price_range, '1000-5000 руб.')
-        self.assertTrue(profile.certificates)
-    
+
+    def test_specialist_profile_creation(self):
+        """Тест создания профиля специалиста"""
+        self.assertTrue(hasattr(self.user, 'specialist_profile'))
+        self.assertEqual(self.specialist_profile.specialization, 'veterinarian')
+        self.assertEqual(self.specialist_profile.experience_years, 5)
+
     def test_specialist_profile_str(self):
         """Тест строкового представления профиля специалиста"""
-        profile = SpecialistProfile.objects.create(
+        expected = f'Профиль специалиста {self.user.phone}'
+        self.assertEqual(str(self.specialist_profile), expected)
+
+    def test_specialist_rating_calculation(self):
+        """Тест расчета рейтинга специалиста"""
+        # Создаем отзывы
+        other_user = User.objects.create_user(
+            phone='+79991234568',
+            password='testpass123'
+        )
+        Review.objects.create(
+            author=other_user,
+            specialist=self.user,
+            rating=5,
+            comment='Excellent'
+        )
+        Review.objects.create(
+            author=other_user,
+            specialist=self.user,
+            rating=3,
+            comment='Average'
+        )
+        
+        self.assertEqual(self.specialist_profile.rating, 4.0)
+
+class VerificationDocumentTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            phone='+79991234567',
+            password='testpass123'
+        )
+
+    def create_test_image(self):
+        """Создание тестового изображения"""
+        file = io.BytesIO()
+        image = Image.new('RGB', (100, 100), 'white')
+        image.save(file, 'JPEG')
+        file.seek(0)
+        return SimpleUploadedFile('test.jpg', file.getvalue(), content_type='image/jpeg')
+
+    def test_document_creation(self):
+        """Тест создания документа верификации"""
+        test_image = self.create_test_image()
+        document = VerificationDocument.objects.create(
             user=self.user,
-            seller_type='individual',
+            document=test_image,
+            document_type='passport',
+            comment='Test document'
+        )
+        
+        self.assertTrue(document.document)
+        self.assertEqual(document.document_type, 'passport')
+        self.assertEqual(document.status, 'pending')
+
+    def test_document_str(self):
+        """Тест строкового представления документа"""
+        test_image = self.create_test_image()
+        document = VerificationDocument.objects.create(
+            user=self.user,
+            document=test_image,
+            document_type='passport'
+        )
+        expected = f'Документ {document.document_type} пользователя {self.user.phone}'
+        self.assertEqual(str(document), expected)
+
+class ReviewTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            phone='+79991234567',
+            password='testpass123'
+        )
+        self.seller = User.objects.create_user(
+            phone='+79991234568',
+            password='testpass123',
+            is_seller=True
+        )
+        self.specialist = User.objects.create_user(
+            phone='+79991234569',
+            password='testpass123',
+            is_specialist=True
+        )
+        SellerProfile.objects.create(
+            user=self.seller,
+            seller_type='individual'
+        )
+        SpecialistProfile.objects.create(
+            user=self.specialist,
             specialization='veterinarian'
         )
-        expected_str = f'Профиль специалиста {self.user.get_full_name()}'
-        self.assertEqual(str(profile), expected_str)
-    
-    def test_specialist_profile_inheritance(self):
-        """Тест наследования от SellerProfile"""
-        profile = SpecialistProfile.objects.create(
-            user=self.user,
-            seller_type='individual',
-            specialization='veterinarian',
-            company_name='Ветклиника',
-            inn='1234567890'
+
+    def test_review_creation(self):
+        """Тест создания отзыва"""
+        review = Review.objects.create(
+            author=self.user,
+            seller=self.seller,
+            rating=5,
+            comment='Excellent service'
         )
         
-        # Проверяем поля из SellerProfile
-        self.assertEqual(profile.seller_type, 'individual')
-        self.assertEqual(profile.company_name, 'Ветклиника')
-        self.assertEqual(profile.inn, '1234567890')
-        
-        # Проверяем поля SpecialistProfile
-        self.assertEqual(profile.specialization, 'veterinarian')
-    
-    def test_specialist_services_and_price(self):
-        """Тест услуг и цен специалиста"""
-        profile = SpecialistProfile.objects.create(
-            user=self.user,
-            seller_type='individual',
-            specialization='groomer',
-            services='Стрижка\nМытье\nУкладка',
-            price_range='от 2000 руб.'
+        self.assertEqual(review.rating, 5)
+        self.assertEqual(review.comment, 'Excellent service')
+        self.assertEqual(review.author, self.user)
+        self.assertEqual(review.seller, self.seller)
+
+    def test_review_str(self):
+        """Тест строкового представления отзыва"""
+        review = Review.objects.create(
+            author=self.user,
+            specialist=self.specialist,
+            rating=4,
+            comment='Good service'
         )
-        
-        self.assertEqual(profile.specialization, 'groomer')
-        self.assertIn('Стрижка', profile.services)
-        self.assertIn('Мытье', profile.services)
-        self.assertEqual(profile.price_range, 'от 2000 руб.') 
+        expected = f'Отзыв от {self.user.phone}'
+        self.assertEqual(str(review), expected)
+
+    def test_review_validation(self):
+        """Тест валидации отзыва"""
+        # Тест создания отзыва с невалидным рейтингом
+        with self.assertRaises(ValueError):
+            Review.objects.create(
+                author=self.user,
+                seller=self.seller,
+                rating=6,  # Невалидное значение
+                comment='Invalid rating'
+            ) 

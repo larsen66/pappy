@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.postgres',
     
     # Third party apps
     'crispy_forms',
@@ -36,6 +37,8 @@ INSTALLED_APPS = [
     'django_otp',
     'django_otp.plugins.otp_totp',
     'django_otp.plugins.otp_static',
+    'rest_framework',
+    'environ',
     
     # Local apps
     'login_auth.apps.LoginAuthConfig',
