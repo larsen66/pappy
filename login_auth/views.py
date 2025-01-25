@@ -96,3 +96,26 @@ def signup(request):
 
 def signup_success(request):
     return render(request, 'login_auth/signup_success.html') 
+
+
+def login_view(request):
+    return render(request, 'login_auth/login.html')
+
+def send_code(request):
+    if request.method == 'POST':
+        phone = request.POST.get('phone')
+        # Send SMS code logic here
+        return render(request, 'login_auth/login.html', {
+            'verification_step': True,
+            'phone': phone
+        })
+
+def verify_code(request):
+    if request.method == 'POST':
+        code = request.POST.get('code')
+        phone = request.POST.get('phone')
+        # Verify code logic here
+        return render(request, 'login_auth/login.html', {
+            'verification_step': False,
+            'phone': phone
+        })

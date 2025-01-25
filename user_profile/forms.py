@@ -9,12 +9,13 @@ class UserSettingsForm(forms.ModelForm):
     """Форма для редактирования основных настроек пользователя"""
     class Meta:
         model = User
-        fields = ['phone', 'email', 'is_specialist', 'is_shelter']
+        fields = ['phone', 'email', 'is_specialist', 'is_shelter', 'is_seller']
         widgets = {
             'phone': forms.TextInput(attrs={'class': 'form-control'}),
             'email': forms.EmailInput(attrs={'class': 'form-control'}),
             'is_specialist': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'is_shelter': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'is_seller': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
 class UserProfileForm(forms.ModelForm):

@@ -1,0 +1,67 @@
+:root { 
+  --black: #000000;
+  --black-2: #000000e6;
+  --black-3: #00000080;
+  --black-4: #00000014;
+  --cultured-pearl: #f5f5f5;
+  --gray-nurse: #eaeaea;
+  --white: #ffffff;
+ 
+  --font-size-l: 16px;
+  --font-size-m: 14px;
+  --font-size-xl: 18px;
+  --font-size-xxl: 20px;
+  --font-size-xxxl: 40px;
+ 
+  --font-family-sf_pro-medium: "SF Pro-Medium", Helvetica;
+  --font-family-sf_pro-regular: "SF Pro-Regular", Helvetica;
+  --font-family-sf_pro-semibold: "SF Pro-Semibold", Helvetica;
+  --font-family-sf_pro_rounded-bold: "SF Pro Rounded-Bold", Helvetica;
+}
+.sfpro-regular-normal-black-14px {
+  color: var(--black-3);
+  font-family: var(--font-family-sf_pro-regular);
+  font-size: var(--font-size-m);
+  font-style: normal;
+  font-weight: 400;
+}
+
+.sfpro-medium-black-16px {
+  color: var(--black-2);
+  font-family: var(--font-family-sf_pro-medium);
+  font-size: var(--font-size-l);
+  font-style: normal;
+  font-weight: 500;
+}
+
+.sfpro-medium-black-20px {
+  color: var(--black-2);
+  font-family: var(--font-family-sf_pro-medium);
+  font-size: var(--font-size-xxl);
+  font-style: normal;
+  font-weight: 500;
+}
+
+.sfpro-medium-black-14px {
+  color: var(--black-2);
+  font-family: var(--font-family-sf_pro-medium);
+  font-size: var(--font-size-m);
+  font-style: normal;
+  font-weight: 500;
+}
+
+.sfpro-regular-normal-black-14px-2 {
+  color: var(--black);
+  font-family: var(--font-family-sf_pro-regular);
+  font-size: var(--font-size-m);
+  font-style: normal;
+  font-weight: 400;
+}
+
+.sfpro-medium-white-14px {
+  color: var(--white);
+  font-family: var(--font-family-sf_pro-medium);
+  font-size: var(--font-size-m);
+  font-style: normal;
+  font-weight: 500;
+}

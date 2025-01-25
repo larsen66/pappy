@@ -10,4 +10,6 @@ urlpatterns = [
     path('signup/', views.signup, name='signup'),
     path('signup-success/', views.signup_success, name='signup_success'),
     path('logout/', LogoutView.as_view(), name='logout'),
+    path('send-code/', views.send_code, name='send_code'),
+    path('verify-code/', views.verify_code, name='verify_code'),
 ] 
