@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Проверка документа | Pappi{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">Проверка документа</h4>
+                </div>
+                <div class="card-body">
+                    <div class="document-info mb-4">
+                        <h5>Информация о документе</h5>
+                        <dl class="row">
+                            <dt class="col-sm-4">Пользователь:</dt>
+                            <dd class="col-sm-8">{{ queue_item.document.user.phone }}</dd>
+                            
+                            <dt class="col-sm-4">Тип документа:</dt>
+                            <dd class="col-sm-8">{{ queue_item.document.get_document_type_display }}</dd>
+                            
+                            <dt class="col-sm-4">Загружен:</dt>
+                            <dd class="col-sm-8">{{ queue_item.document.created_at|date:"d.m.Y H:i" }}</dd>
+                            
+                            <dt class="col-sm-4">Приоритет:</dt>
+                            <dd class="col-sm-8">
+                                <span class="badge {% if queue_item.priority == 'high' %}bg-danger{% elif queue_item.priority == 'medium' %}bg-warning{% else %}bg-info{% endif %}">
+                                    {{ queue_item.get_priority_display }}
+                                </span>
+                            </dd>
+                            
+                            {% if queue_item.document.comment %}
+                                <dt class="col-sm-4">Комментарий:</dt>
+                                <dd class="col-sm-8">{{ queue_item.document.comment }}</dd>
+                            {% endif %}
+                        </dl>
+                    </div>
+
+                    <div class="document-preview mb-4">
+                        <h5>Документ</h5>
+                        {% with doc_url=queue_item.document.document.url %}
+                            {% if ".pdf" in doc_url %}
+                                <embed src="{{ doc_url }}" type="application/pdf" width="100%" height="600px">
+                            {% else %}
+                                <img src="{{ doc_url }}" alt="Документ" class="img-fluid">
+                            {% endif %}
+                        {% endwith %}
+                    </div>
+
+                    <div class="moderation-actions">
+                        <h5>Решение</h5>
+                        <form method="post">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <label for="reason" class="form-label">Комментарий модератора</label>
+                                <textarea class="form-control" id="reason" name="reason" rows="3"></textarea>
+                                <div class="form-text">Обязательно при отклонении документа</div>
+                            </div>
+                            
+                            <div class="d-flex gap-2">
+                                <button type="submit" name="action" value="approve" class="btn btn-success">
+                                    <i class="fas fa-check"></i> Одобрить
+                                </button>
+                                <button type="submit" name="action" value="reject" class="btn btn-danger">
+                                    <i class="fas fa-times"></i> Отклонить
+                                </button>
+                                <a href="{% url 'user_profile:moderation_queue' %}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left"></i> Вернуться
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const rejectButton = document.querySelector('button[value="reject"]');
+    const reasonField = document.querySelector('#reason');
+    
+    rejectButton.addEventListener('click', function(e) {
+        if (!reasonField.value.trim()) {
+            e.preventDefault();
+            alert('При отклонении документа необходимо указать причину');
+            reasonField.focus();
+        }
+    });
+});
+</script>
+{% endblock %} 
