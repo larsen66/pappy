@@ -4,7 +4,6 @@ from django.utils.translation import gettext_lazy as _
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils.text import slugify
 from unidecode import unidecode
-from django.contrib.gis.db.models.fields import PointField
 from django.contrib.postgres.fields import ArrayField
 
 class AnnouncementCategory(models.Model):
@@ -206,12 +205,11 @@ class LostFoundAnnouncement(models.Model):
     size = models.CharField(_('Размер'), max_length=20, choices=SIZE_CHOICES)
     distinctive_features = models.TextField(_('Отличительные черты'))
     
-    # Location fields with PostGIS support
+    # Location fields
     date_lost_found = models.DateTimeField(_('Дата и время пропажи/находки'))
     location = models.CharField(_('Место пропажи/находки'), max_length=255)
     latitude = models.DecimalField(_('Широта'), max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(_('Долгота'), max_digits=9, decimal_places=6, null=True, blank=True)
-    location_point = models.PointField(_('Координаты'), null=True, blank=True, srid=4326)
     
     # Contact information
     contact_phone = models.CharField(_('Контактный телефон'), max_length=20)
@@ -247,12 +245,10 @@ class LostFoundAnnouncement(models.Model):
             models.Index(fields=['type', 'animal_type']),
             models.Index(fields=['date_lost_found']),
             models.Index(fields=['location']),
+            models.Index(fields=['latitude', 'longitude']),
         ]
         
     def save(self, *args, **kwargs):
-        # Update location_point if lat/lon provided
-        if self.latitude and self.longitude and not self.location_point:
-            self.location_point = Point(float(self.longitude), float(self.latitude))
         super().save(*args, **kwargs)
 
 class AnnouncementImage(models.Model):
