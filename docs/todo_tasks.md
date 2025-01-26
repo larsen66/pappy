@@ -185,34 +185,125 @@ django-location-field==2.1.0
 5. Add basic suggestion system
 6. Implement test suite 
 
-# Оставшиеся задачи
+# Оставшиеся задачи из ветки Б
 
-## Тесты для Потеряшек
+## 1. Котопсиндер (система лайков)
 
-### Unit Tests
-- [ ] Тесты для `LostFoundAnnouncement`:
-  - Создание объявления
-  - Валидация полей
-  - Работа индексов
+### 1.1 Основной функционал
+- [ ] Система свайпов
+- [ ] Алгоритм подбора карточек
+- [ ] Обработка лайков/дизлайков
+- [ ] История просмотров
 
-- [ ] Тесты для сервисов:
-  - `AreaNotificationService`
-  - `LostPetMatchingService`
-  - `LostPetSuggestionService`
-  - `SearchHistoryService`
+```python
+class SwipeSystem:
+    def get_next_cards(self, user_id: int, count: int = 10) -> List[Announcement]:
+        """Получение следующих карточек для показа"""
+        pass
 
-### Integration Tests
-- [ ] End-to-end тесты процесса поиска:
-  - Создание объявления о пропаже
-  - Получение уведомлений
-  - Поиск совпадений
-  - Работа с историей поиска
+    def process_swipe(self, user_id: int, announcement_id: int, direction: str) -> bool:
+        """Обработка свайпа"""
+        pass
+```
 
-### Performance Tests
-- [ ] Тесты производительности:
-  - Индексы геолокации
-  - Алгоритм сопоставления
-  - Система уведомлений
+### 1.2 Механика вязки
+- [ ] Двусторонние лайки
+- [ ] Создание пар
+- [ ] Уведомления о совпадениях
+- [ ] Специальные фильтры
+
+```python
+class BreedingMatch:
+    def check_compatibility(self, pet1_id: int, pet2_id: int) -> bool:
+        """Проверка совместимости животных"""
+        pass
+
+    def create_match(self, pet1_id: int, pet2_id: int) -> Match:
+        """Создание пары для вязки"""
+        pass
+```
+
+## 2. Чат-система
+
+### 2.1 Базовый чат
+- [ ] Диалоги и сообщения
+- [ ] Прикрепление файлов
+- [ ] Статусы сообщений
+- [ ] Уведомления
+
+### 2.2 Расширенные функции
+- [ ] Отправка геолокации
+- [ ] Аудио-сообщения
+- [ ] Групповые чаты
+- [ ] Поиск по сообщениям
+
+## 3. Тесты
+
+### 3.1 Unit Tests
+```python
+class SwipeTests(TestCase):
+    def test_swipe_processing(self):
+        pass
+    
+    def test_match_creation(self):
+        pass
+
+class ChatTests(TestCase):
+    def test_message_sending(self):
+        pass
+    
+    def test_file_attachment(self):
+        pass
+```
+
+### 3.2 Integration Tests
+```python
+class SwipeIntegrationTests(TestCase):
+    def test_complete_match_flow(self):
+        pass
+    
+    def test_breeding_match_flow(self):
+        pass
+
+class ChatIntegrationTests(TestCase):
+    def test_dialog_creation_flow(self):
+        pass
+    
+    def test_media_sharing_flow(self):
+        pass
+```
+
+## 4. Миграции
+
+```python
+# migrations/0001_chat_system.py
+class Migration(migrations.Migration):
+    dependencies = []
+    operations = [
+        migrations.CreateModel(
+            name='Dialog',
+            fields=[
+                # Поля модели...
+            ]
+        ),
+        migrations.CreateModel(
+            name='Message',
+            fields=[
+                # Поля модели...
+            ]
+        ),
+    ]
+```
+
+## 5. Зависимости
+
+```
+# requirements_branch_b.txt
+channels==3.0.4
+channels-redis==3.4.0
+django-storages==1.13.2
+Pillow==9.5.0
+```
 
 ## Документация
 - [ ] API документация для сервисов
