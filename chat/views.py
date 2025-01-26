@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse, HttpResponseForbidden
 from django.db.models import Q, Max, Prefetch
 from django.utils import timezone
-from .models import Dialog, Message
+from .models import Dialog, Message, Chat
 from catalog.models import Product
 
 @login_required
@@ -133,4 +133,22 @@ def create_dialog(request, product_id):
     dialog = Dialog.objects.create(product=product)
     dialog.participants.add(request.user, product.seller)
     
-    return redirect('chat:dialog_detail', dialog_id=dialog.id) 
+    return redirect('chat:dialog_detail', dialog_id=dialog.id)
+
+@login_required
+def chat_list(request):
+    """Список чатов пользователя"""
+    chats = Chat.objects.filter(participants=request.user)
+    return render(request, 'chat/chat_list.html', {'chats': chats})
+
+@login_required
+def chat_detail(request, chat_id):
+    """Детальная страница чата"""
+    chat = get_object_or_404(Chat, id=chat_id, participants=request.user)
+    return render(request, 'chat/chat_detail.html', {'chat': chat})
+
+@login_required
+def create_chat(request, user_id):
+    """Создание нового чата"""
+    # Здесь будет логика создания чата
+    return redirect('chat:list') 

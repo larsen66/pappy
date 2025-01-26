@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h3 class="card-title text-center mb-4">Подтверждение номера</h3>
+                    <p class="text-center mb-4">Код отправлен на номер {{ phone }}</p>
+                    
+                    {% if messages %}
+                    <div class="messages mb-3">
+                        {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }}">
+                            {{ message }}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        {{ form|crispy }}
+                        <button type="submit" id="submit-button" class="btn btn-primary w-100 mt-3">
+                            Подтвердить
+                        </button>
+                        <div class="text-center mt-3">
+                            <span id="timer" class="text-muted"></span>
+                            <button type="button" 
+                                    id="resend-button" 
+                                    class="btn btn-link" 
+                                    style="display: none;"
+                                    onclick="resendCode()">
+                                Отправить код повторно
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .btn-primary:disabled {
+        background-color: #ccc;
+        border-color: #ccc;
+        cursor: not-allowed;
+    }
+    .btn-primary:not(:disabled):hover {
+        background-color: #0056b3;
+    }
+    #id_code {
+        letter-spacing: 0.5em;
+        font-size: 1.5em;
+        text-align: center;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const codeInput = document.getElementById('id_code');
+    const submitButton = document.getElementById('submit-button');
+    const timerSpan = document.getElementById('timer');
+    const resendButton = document.getElementById('resend-button');
+    let timeLeft = 60;
+
+    function updateTimer() {
+        if (timeLeft > 0) {
+            timerSpan.textContent = `Отправить код повторно через ${timeLeft} сек.`;
+            timeLeft--;
+            setTimeout(updateTimer, 1000);
+        } else {
+            timerSpan.style.display = 'none';
+            resendButton.style.display = 'inline-block';
+        }
+    }
+
+    updateTimer();
+
+    if (codeInput) {
+        codeInput.addEventListener('input', function(e) {
+            // Удаляем все нецифровые символы
+            this.value = this.value.replace(/\D/g, '');
+            
+            // Ограничиваем длину до 4 цифр
+            if (this.value.length > 4) {
+                this.value = this.value.slice(0, 4);
+            }
+            
+            // Активируем кнопку только если введены все 4 цифры
+            submitButton.disabled = this.value.length !== 4;
+        });
+
+        // Запрещаем ввод нецифровых символов
+        codeInput.addEventListener('keypress', function(e) {
+            if (!/\d/.test(e.key)) {
+                e.preventDefault();
+            }
+        });
+    }
+});
+
+function resendCode() {
+    fetch('/auth/resend/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        credentials: 'same-origin'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert(data.error);
+        } else {
+            // Перезапускаем таймер
+            document.getElementById('timer').style.display = 'inline';
+            document.getElementById('resend-button').style.display = 'none';
+            window.timeLeft = 60;
+            updateTimer();
+            alert('Новый код отправлен');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Произошла ошибка при отправке кода');
+    });
+}
+</script>
+{% endblock %} 

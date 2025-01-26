@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-header">
+        <a href="javascript:history.back()" class="back-button">←</a>
+        <h1>Регистрация / Авторизация</h1>
+    </div>
+
+    <div class="auth-form">
+        <h2>Введите код из СМС</h2>
+        <p class="auth-description">На ваш номер телефона отправлен код подтверждения. Введите его для продолжения.</p>
+
+        <form method="post" class="sms-form">
+            {% csrf_token %}
+            {{ form.phone }}
+            
+            <div class="form-group">
+                {{ form.code }}
+                {% if form.code.errors %}
+                <div class="error-message">
+                    {{ form.code.errors.0 }}
+                </div>
+                {% endif %}
+            </div>
+
+            {% if form.non_field_errors %}
+            <div class="error-message">
+                {% for error in form.non_field_errors %}
+                    {{ error }}
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <button type="submit" class="submit-button">Продолжить</button>
+            
+            <div class="resend-block">
+                <button type="button" class="resend-button" onclick="resendCode('{{ phone }}')">
+                    Отправить код еще раз
+                </button>
+                <div id="resend-timer" class="timer"></div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.auth-container {
+    padding: 20px;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.auth-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.back-button {
+    font-size: 24px;
+    text-decoration: none;
+    color: #000;
+    margin-right: 15px;
+}
+
+.auth-header h1 {
+    font-size: 18px;
+    margin: 0;
+}
+
+.auth-form h2 {
+    font-size: 20px;
+    margin-bottom: 10px;
+}
+
+.auth-description {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 25px;
+}
+
+.sms-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+input[type="text"] {
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 24px;
+    text-align: center;
+    letter-spacing: 8px;
+    width: 200px;
+}
+
+.submit-button {
+    background-color: #e0e0e0;
+    color: #666;
+    border: none;
+    padding: 15px;
+    border-radius: 8px;
+    font-size: 16px;
+    margin-top: 20px;
+    cursor: pointer;
+}
+
+.submit-button:hover {
+    background-color: #d0d0d0;
+}
+
+.error-message {
+    color: #dc3545;
+    font-size: 14px;
+    text-align: center;
+}
+
+.resend-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 20px;
+    gap: 10px;
+}
+
+.resend-button {
+    background: none;
+    border: none;
+    color: #666;
+    text-decoration: underline;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.timer {
+    color: #666;
+    font-size: 14px;
+}
+</style>
+
+<script>
+function startTimer(duration, display) {
+    let timer = duration;
+    const interval = setInterval(function () {
+        const minutes = parseInt(timer / 60, 10);
+        const seconds = parseInt(timer % 60, 10);
+
+        display.textContent = minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
+
+        if (--timer < 0) {
+            clearInterval(interval);
+            display.textContent = "";
+            document.querySelector('.resend-button').style.display = 'block';
+        }
+    }, 1000);
+}
+
+function resendCode(phone) {
+    fetch('{% url "login_auth:resend_code" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: 'phone=' + encodeURIComponent(phone)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.message) {
+            document.querySelector('.resend-button').style.display = 'none';
+            const timerDisplay = document.querySelector('#resend-timer');
+            startTimer(60, timerDisplay);
+        } else {
+            alert(data.error || 'Произошла ошибка при отправке кода');
+        }
+    })
+    .catch(error => {
+        alert('Произошла ошибка при отправке кода');
+    });
+}
+
+// Запускаем таймер при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    const timerDisplay = document.querySelector('#resend-timer');
+    document.querySelector('.resend-button').style.display = 'none';
+    startTimer(60, timerDisplay);
+});
+</script>
+{% endblock %} 

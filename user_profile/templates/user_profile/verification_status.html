@@ -1,111 +1,56 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Статус верификации | Паппи{% endblock %}
+{% block title %}Статус верификации | Pappi{% endblock %}
 
 {% block content %}
-<div class="profile-container">
-    <div class="profile-header">
-        <h1 class="page-title">Статус верификации</h1>
-    </div>
-    
-    <div class="profile-content">
-        <div class="profile-sidebar">
-            <div class="profile-menu">
-                <a href="{% url 'user_profile:settings' %}" class="menu-item">
-                    <i class="fas fa-user"></i> Основные настройки
-                </a>
-                <a href="{% url 'user_profile:verification_status' %}" class="menu-item active">
-                    <i class="fas fa-clock"></i> Статус верификации
-                </a>
-            </div>
-        </div>
-        
-        <div class="profile-main">
-            <div class="profile-section">
-                <div class="verification-status">
-                    {% if profile.is_verified %}
-                    <div class="status-box status-verified">
-                        <i class="fas fa-check-circle"></i>
-                        <h3>Аккаунт верифицирован</h3>
-                        <p>Ваш аккаунт был успешно верифицирован {{ profile.verification_date|date:"d.m.Y" }}</p>
-                        
-                        <div class="status-details">
-                            <div class="detail-item">
-                                <span class="label">Тип аккаунта:</span>
-                                <span class="value">
-                                    {% if profile|isinstance:"SpecialistProfile" %}
-                                    Специалист ({{ profile.get_specialization_display }})
-                                    {% else %}
-                                    {{ profile.get_seller_type_display }}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">Статус верификации</h4>
+                </div>
+                <div class="card-body">
+                    {% if documents %}
+                        {% for document in documents %}
+                            <div class="verification-item mb-4">
+                                <h5>{{ document.get_document_type_display }}</h5>
+                                <div class="status-badge 
+                                    {% if document.status == 'approved' %}badge bg-success
+                                    {% elif document.status == 'rejected' %}badge bg-danger
+                                    {% else %}badge bg-warning{% endif %}">
+                                    {{ document.get_status_display }}
+                                </div>
+                                
+                                <div class="document-details mt-3">
+                                    <p><strong>Загружен:</strong> {{ document.created_at|date:"d.m.Y H:i" }}</p>
+                                    {% if document.comment %}
+                                        <p><strong>Комментарий:</strong> {{ document.comment }}</p>
                                     {% endif %}
-                                </span>
+                                    {% if document.status == 'rejected' and document.rejection_reason %}
+                                        <div class="alert alert-danger">
+                                            <strong>Причина отказа:</strong> {{ document.rejection_reason }}
+                                        </div>
+                                    {% endif %}
+                                </div>
                             </div>
-                            
-                            {% if profile.company_name %}
-                            <div class="detail-item">
-                                <span class="label">Название компании:</span>
-                                <span class="value">{{ profile.company_name }}</span>
-                            </div>
-                            {% endif %}
-                            
-                            {% if profile.inn %}
-                            <div class="detail-item">
-                                <span class="label">ИНН:</span>
-                                <span class="value">{{ profile.inn }}</span>
-                            </div>
-                            {% endif %}
-                        </div>
-                        
-                        <div class="status-actions">
-                            {% if profile|isinstance:"SpecialistProfile" %}
-                            <a href="{% url 'user_profile:specialist_profile' %}" class="btn btn-primary">
-                                <i class="fas fa-user-md"></i> Перейти в профиль специалиста
-                            </a>
-                            {% else %}
-                            <a href="{% url 'user_profile:seller_profile' %}" class="btn btn-primary">
-                                <i class="fas fa-store"></i> Перейти в профиль продавца
-                            </a>
-                            {% endif %}
-                        </div>
-                    </div>
+                        {% endfor %}
                     {% else %}
-                    <div class="status-box status-pending">
-                        <i class="fas fa-clock"></i>
-                        <h3>Заявка на рассмотрении</h3>
-                        <p>Ваша заявка на верификацию находится на рассмотрении. Обычно проверка занимает 1-2 рабочих дня.</p>
-                        
-                        <div class="status-details">
-                            <div class="detail-item">
-                                <span class="label">Тип аккаунта:</span>
-                                <span class="value">
-                                    {% if profile|isinstance:"SpecialistProfile" %}
-                                    Специалист ({{ profile.get_specialization_display }})
-                                    {% else %}
-                                    {{ profile.get_seller_type_display }}
-                                    {% endif %}
-                                </span>
-                            </div>
-                            
-                            {% if profile.company_name %}
-                            <div class="detail-item">
-                                <span class="label">Название компании:</span>
-                                <span class="value">{{ profile.company_name }}</span>
-                            </div>
-                            {% endif %}
+                        <div class="text-center py-4">
+                            <p class="text-muted mb-3">У вас пока нет загруженных документов для верификации</p>
+                            <a href="{% url 'user_profile:verification_request' %}" class="btn btn-primary">
+                                <i class="fas fa-upload"></i> Загрузить документы
+                            </a>
                         </div>
-                        
-                        <div class="status-info">
-                            <h4>Что дальше?</h4>
-                            <ul>
-                                <li>Мы проверим предоставленные вами документы</li>
-                                <li>Уведомим вас о результатах проверки</li>
-                                <li>В случае успешной верификации вы получите доступ ко всем преимуществам</li>
-                            </ul>
-                        </div>
-                    </div>
                     {% endif %}
                 </div>
+            </div>
+            
+            <div class="mt-3">
+                <a href="{% url 'user_profile:settings' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Вернуться в профиль
+                </a>
             </div>
         </div>
     </div>
@@ -113,5 +58,5 @@
 {% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/profile.css' %}">
+<link rel="stylesheet" href="{% static 'css/verification.css' %}">
 {% endblock %} 

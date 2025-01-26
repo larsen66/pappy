@@ -5,86 +5,58 @@
 {% block title %}Настройки профиля | Паппи{% endblock %}
 
 {% block content %}
-<div class="profile-container">
-    <div class="profile-header">
-        <h1 class="page-title">Настройки профиля</h1>
-    </div>
-    
-    <div class="profile-content">
-        <div class="profile-sidebar">
-            <div class="profile-menu">
-                <a href="{% url 'user_profile:settings' %}" class="menu-item active">
-                    <i class="fas fa-user"></i> Основные настройки
-                </a>
-                {% if user.seller_profile %}
-                    {% if user.seller_profile.is_verified %}
-                        {% if user.seller_profile|isinstance:"SpecialistProfile" %}
-                        <a href="{% url 'user_profile:specialist_profile' %}" class="menu-item">
-                            <i class="fas fa-user-md"></i> Профиль специалиста
-                        </a>
-                        {% else %}
-                        <a href="{% url 'user_profile:seller_profile' %}" class="menu-item">
-                            <i class="fas fa-store"></i> Профиль продавца
-                        </a>
-                        {% endif %}
-                    {% else %}
-                        <a href="{% url 'user_profile:verification_status' %}" class="menu-item">
-                            <i class="fas fa-clock"></i> Статус верификации
-                        </a>
-                    {% endif %}
-                {% else %}
-                    <a href="{% url 'user_profile:verification' %}" class="menu-item">
-                        <i class="fas fa-user-check"></i> Стать продавцом
-                    </a>
-                {% endif %}
-            </div>
-        </div>
-        
-        <div class="profile-main">
-            <div class="profile-section">
-                <form method="post" enctype="multipart/form-data" class="profile-form">
-                    {% csrf_token %}
-                    
-                    <div class="avatar-section">
-                        <div class="current-avatar">
-                            {% if user.avatar %}
-                            <img src="{{ user.avatar.url }}" alt="{{ user.get_full_name }}" class="avatar-preview">
-                            {% else %}
-                            <div class="avatar-placeholder">
-                                {{ user.get_full_name|first }}
-                            </div>
-                            {% endif %}
-                        </div>
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4>Настройки профиля</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
                         
-                        <div class="avatar-upload">
-                            {{ form.avatar|as_crispy_field }}
+                        {% if messages %}
+                        <div class="messages mb-3">
+                            {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }}">
+                                {{ message }}
+                            </div>
+                            {% endfor %}
                         </div>
-                    </div>
-                    
-                    <div class="form-row">
-                        <div class="col-md-6">
-                            {{ form.first_name|as_crispy_field }}
+                        {% endif %}
+
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="text-center mb-3">
+                                    {% if profile.avatar %}
+                                        <img src="{{ profile.avatar.url }}" alt="Avatar" class="rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">
+                                    {% else %}
+                                        <div class="avatar-placeholder rounded-circle d-flex align-items-center justify-content-center bg-secondary text-white" style="width: 150px; height: 150px; margin: 0 auto;">
+                                            {{ user.get_full_name|default:user.phone|first|upper }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                {{ profile_form.avatar|as_crispy_field }}
+                            </div>
+                            
+                            <div class="col-md-8">
+                                <h5>Основная информация</h5>
+                                {{ user_form|crispy }}
+                                
+                                <h5 class="mt-4">Дополнительная информация</h5>
+                                {{ profile_form.bio|as_crispy_field }}
+                                {{ profile_form.location|as_crispy_field }}
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            {{ form.last_name|as_crispy_field }}
+
+                        <div class="form-actions mt-3">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Сохранить изменения
+                            </button>
                         </div>
-                    </div>
-                    
-                    <div class="form-row">
-                        <div class="col-md-6">
-                            {{ form.email|as_crispy_field }}
-                        </div>
-                        <div class="col-md-6">
-                            {{ form.phone|as_crispy_field }}
-                        </div>
-                    </div>
-                    
-                    <div class="form-actions">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save"></i> Сохранить изменения
-                        </button>
-                    </div>
-                </form>
+                    </form>
+                </div>
             </div>
         </div>
     </div>

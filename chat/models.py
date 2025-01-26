@@ -53,12 +53,35 @@ class Dialog(models.Model):
     def get_absolute_url(self):
         return f'/chat/{self.id}/'
 
+class Chat(models.Model):
+    participants = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name='chats',
+        verbose_name='Участники'
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Создан'
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name='Обновлен'
+    )
+
+    class Meta:
+        verbose_name = 'Чат'
+        verbose_name_plural = 'Чаты'
+        ordering = ['-updated_at']
+
+    def __str__(self):
+        return f'Чат {self.id}'
+
 class Message(models.Model):
-    dialog = models.ForeignKey(
-        Dialog,
+    chat = models.ForeignKey(
+        Chat,
         on_delete=models.CASCADE,
         related_name='messages',
-        verbose_name='Диалог'
+        verbose_name='Чат'
     )
     sender = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -66,20 +89,20 @@ class Message(models.Model):
         related_name='sent_messages',
         verbose_name='Отправитель'
     )
-    text = models.TextField('Текст')
-    created = models.DateTimeField(
-        'Создано',
-        auto_now_add=True
+    text = models.TextField('Текст сообщения')
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Отправлено'
     )
     is_read = models.BooleanField(
-        'Прочитано',
-        default=False
+        default=False,
+        verbose_name='Прочитано'
     )
-    
+
     class Meta:
         verbose_name = 'Сообщение'
         verbose_name_plural = 'Сообщения'
-        ordering = ['created']
-    
+        ordering = ['created_at']
+
     def __str__(self):
-        return f'Сообщение от {self.sender} в {self.dialog}' 
+        return f'Сообщение от {self.sender} в чате {self.chat.id}' 

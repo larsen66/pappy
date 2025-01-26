@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Поиск специалистов</h2>
+    
+    <form method="get" class="mb-4">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label for="specialization">Специализация</label>
+                    <input type="text" name="specialization" id="specialization" class="form-control" value="{{ specialization }}">
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label for="min_experience">Минимальный опыт (лет)</label>
+                    <input type="number" name="min_experience" id="min_experience" class="form-control" value="{{ min_experience }}">
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label for="min_rating">Минимальный рейтинг</label>
+                    <input type="number" name="min_rating" id="min_rating" class="form-control" value="{{ min_rating }}">
+                </div>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary mt-3">Поиск</button>
+    </form>
+    
+    <div class="row">
+        {% for specialist in specialists %}
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">{{ specialist.user.get_full_name }}</h5>
+                    <p class="card-text">
+                        <strong>Специализация:</strong> {{ specialist.specialization }}<br>
+                        <strong>Опыт:</strong> {{ specialist.experience_years }} лет<br>
+                        <strong>Рейтинг:</strong> {{ specialist.rating|default:"Нет рейтинга" }}<br>
+                        <strong>Услуги:</strong> {{ specialist.services }}<br>
+                        <strong>Ценовой диапазон:</strong> {{ specialist.price_range }}
+                    </p>
+                    <a href="{% url 'user_profile:specialist_detail' specialist.pk %}" class="btn btn-primary">Подробнее</a>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <p>Специалисты не найдены.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %} 

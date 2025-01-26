@@ -3,16 +3,19 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 
 class UserProfile(models.Model):
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name='profile',
+        related_name='userprofile',
         verbose_name=_('Пользователь')
     )
+    avatar = models.ImageField(_('Аватар'), upload_to='avatars/', null=True, blank=True)
     bio = models.TextField(_('О себе'), blank=True)
     location = models.CharField(_('Местоположение'), max_length=200, blank=True)
+    is_onboarded = models.BooleanField(_('Прошел онбординг'), default=False)
     created_at = models.DateTimeField(_('Дата создания'), auto_now_add=True)
     updated_at = models.DateTimeField(_('Дата обновления'), auto_now=True)
 
@@ -104,6 +107,19 @@ class SpecialistProfile(models.Model):
         return f'Профиль специалиста {self.user.phone}'
 
 class VerificationDocument(models.Model):
+    DOCUMENT_TYPE_CHOICES = (
+        ('passport', 'Паспорт'),
+        ('license', 'Лицензия'),
+        ('certificate', 'Сертификат'),
+        ('other', 'Другое'),
+    )
+    
+    STATUS_CHOICES = (
+        ('pending', 'На рассмотрении'),
+        ('approved', 'Одобрено'),
+        ('rejected', 'Отклонено'),
+    )
+    
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -112,19 +128,57 @@ class VerificationDocument(models.Model):
     )
     document = models.FileField(
         _('Документ'),
-        upload_to='verification_documents/%Y/%m/%d/'
+        upload_to='verification_documents/'
     )
-    uploaded_at = models.DateTimeField(_('Дата загрузки'), auto_now_add=True)
-    is_verified = models.BooleanField(_('Проверен'), default=False)
-    comment = models.TextField(_('Комментарий'), blank=True)
+    document_type = models.CharField(
+        _('Тип документа'),
+        max_length=20,
+        choices=DOCUMENT_TYPE_CHOICES
+    )
+    status = models.CharField(
+        _('Статус'),
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='pending'
+    )
+    comment = models.TextField(
+        _('Комментарий'),
+        blank=True
+    )
+    rejection_reason = models.TextField(
+        _('Причина отказа'),
+        blank=True
+    )
+    created_at = models.DateTimeField(
+        _('Создан'),
+        default=timezone.now
+    )
+    updated_at = models.DateTimeField(
+        _('Обновлен'),
+        auto_now=True
+    )
 
     class Meta:
         verbose_name = _('Документ верификации')
         verbose_name_plural = _('Документы верификации')
-        ordering = ['-uploaded_at']
+        ordering = ['-created_at']
 
     def __str__(self):
-        return f'Документ верификации {self.user.phone}'
+        return f'{self.get_document_type_display()} - {self.user}'
+
+    def approve(self):
+        """Одобрить документ"""
+        self.status = 'approved'
+        self.save()
+        if self.document_type == 'passport':
+            self.user.is_verified = True
+            self.user.save()
+
+    def reject(self, reason):
+        """Отклонить документ"""
+        self.status = 'rejected'
+        self.rejection_reason = reason
+        self.save()
 
 class Review(models.Model):
     author = models.ForeignKey(

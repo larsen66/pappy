@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% block title %}Подтверждение кода{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-4">
+            <div class="mt-4 mb-3">
+                <a href="javascript:history.back()" class="text-decoration-none text-dark">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <span class="ms-2">Регистрация / Авторизация</span>
+            </div>
+            
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <h5 class="mb-4">Введите код из СМС</h5>
+                    <p class="text-muted small mb-4">Введите проверочный код из СМС, которое пришло на номер +{{ phone }}</p>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="otp-inputs mb-4 d-flex justify-content-between">
+                            <input type="text" maxlength="1" class="form-control form-control-lg text-center mx-1" name="code1" required>
+                            <input type="text" maxlength="1" class="form-control form-control-lg text-center mx-1" name="code2" required>
+                            <input type="text" maxlength="1" class="form-control form-control-lg text-center mx-1" name="code3" required>
+                            <input type="text" maxlength="1" class="form-control form-control-lg text-center mx-1" name="code4" required>
+                        </div>
+                        
+                        {% if messages %}
+                            {% for message in messages %}
+                                <div class="alert alert-{{ message.tags }} mb-4">
+                                    {{ message }}
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                        
+                        <div class="text-center mb-4">
+                            <button type="button" class="btn btn-link text-decoration-none" id="resendCode">
+                                <i class="fas fa-redo-alt me-1"></i> Отправить ещё раз
+                            </button>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary w-100 py-2">
+                            Подтвердить
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // OTP input handling
+    const otpInputs = document.querySelectorAll('.otp-inputs input');
+    
+    otpInputs.forEach((input, index) => {
+        // Only allow numbers
+        input.addEventListener('input', function(e) {
+            this.value = this.value.replace(/[^0-9]/g, '');
+            
+            if (this.value.length === 1 && index < otpInputs.length - 1) {
+                otpInputs[index + 1].focus();
+            }
+        });
+        
+        // Handle backspace
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Backspace' && !this.value && index > 0) {
+                otpInputs[index - 1].focus();
+            }
+        });
+    });
+    
+    // Handle paste
+    document.querySelector('.otp-inputs').addEventListener('paste', function(e) {
+        e.preventDefault();
+        const paste = e.clipboardData.getData('text');
+        const digits = paste.match(/\d/g);
+        
+        if (digits) {
+            otpInputs.forEach((input, i) => {
+                if (digits[i]) {
+                    input.value = digits[i];
+                }
+            });
+        }
+    });
+});
+</script>
+{% endblock %} 

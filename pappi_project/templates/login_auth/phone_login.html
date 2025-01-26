@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-header">
+        <a href="javascript:history.back()" class="back-button">←</a>
+        <h1>Регистрация / Авторизация</h1>
+    </div>
+
+    <div class="auth-form">
+        <h2>Вход по номеру телефона</h2>
+        <p class="auth-description">Введите свой номер телефона для авторизации. Если вы уже зарегистрированы - будет произведен вход.</p>
+
+        <form method="post" class="phone-form">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="{{ form.phone.id_for_label }}">Ваш номер телефона</label>
+                {{ form.phone }}
+                {% if form.phone.errors %}
+                <div class="error-message">
+                    {{ form.phone.errors.0 }}
+                </div>
+                {% endif %}
+            </div>
+
+            {% if form.non_field_errors %}
+            <div class="error-message">
+                {% for error in form.non_field_errors %}
+                    {{ error }}
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <button type="submit" class="submit-button" id="submit-button" disabled>Продолжить</button>
+        </form>
+    </div>
+</div>
+
+<style>
+.auth-container {
+    padding: 20px;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.auth-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.back-button {
+    font-size: 24px;
+    text-decoration: none;
+    color: #000;
+    margin-right: 15px;
+}
+
+.auth-header h1 {
+    font-size: 18px;
+    margin: 0;
+}
+
+.auth-form h2 {
+    font-size: 20px;
+    margin-bottom: 10px;
+}
+
+.auth-description {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 25px;
+}
+
+.phone-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group label {
+    font-size: 14px;
+    color: #333;
+}
+
+input[type="tel"] {
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+}
+
+.submit-button {
+    background-color: #e0e0e0;
+    color: #666;
+    border: none;
+    padding: 15px;
+    border-radius: 8px;
+    font-size: 16px;
+    margin-top: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.submit-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.submit-button:not(:disabled) {
+    background-color: #007AFF;
+    color: white;
+}
+
+.submit-button:not(:disabled):hover {
+    background-color: #0056b3;
+}
+
+.error-message {
+    color: #dc3545;
+    font-size: 14px;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const phoneInput = document.querySelector('input[type="tel"]');
+    const submitButton = document.getElementById('submit-button');
+
+    function formatPhoneNumber(value) {
+        if (!value) return value;
+        
+        // Очищаем от всего кроме цифр
+        const phoneNumber = value.replace(/[^\d]/g, '');
+        
+        // Форматируем номер
+        let formattedPhone = '';
+        if (phoneNumber.length < 1) {
+            return '+7';
+        } else if (phoneNumber.length < 4) {
+            formattedPhone = `+7 (${phoneNumber}`;
+        } else if (phoneNumber.length < 7) {
+            formattedPhone = `+7 (${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3)}`;
+        } else if (phoneNumber.length < 9) {
+            formattedPhone = `+7 (${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6)}`;
+        } else {
+            formattedPhone = `+7 (${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6, 8)}-${phoneNumber.slice(8, 10)}`;
+        }
+        
+        return formattedPhone;
+    }
+
+    function validatePhone(phone) {
+        // Проверяем, что номер полный (10 цифр после кода страны)
+        const digitsOnly = phone.replace(/\D/g, '');
+        return digitsOnly.length === 11;
+    }
+
+    phoneInput.addEventListener('input', function(e) {
+        let cursorPosition = this.selectionStart;
+        const previousLength = this.value.length;
+        
+        // Форматируем номер
+        this.value = formatPhoneNumber(this.value);
+        
+        // Корректируем позицию курсора
+        const newLength = this.value.length;
+        cursorPosition += (newLength - previousLength);
+        this.setSelectionRange(cursorPosition, cursorPosition);
+        
+        // Активируем/деактивируем кнопку
+        submitButton.disabled = !validatePhone(this.value);
+    });
+
+    // Устанавливаем начальное значение
+    if (!phoneInput.value) {
+        phoneInput.value = '+7';
+    }
+});
+</script>
+{% endblock %} 

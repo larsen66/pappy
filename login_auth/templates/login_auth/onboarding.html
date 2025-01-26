@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card mt-5">
+                <div class="card-body text-center">
+                    <h2 class="mb-4">{{ title }}</h2>
+                    
+                    <p class="lead mb-5">
+                        Хотите продавать животных или оказывать услуги на нашей платформе?
+                    </p>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <h5 class="card-title">Стать продавцом</h5>
+                                    <p class="card-text">
+                                        Размещайте объявления о продаже животных и получайте доступ к дополнительным возможностям.
+                                    </p>
+                                    <a href="{% url 'login_auth:become_seller' %}" class="btn btn-primary">
+                                        Стать продавцом
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <h5 class="card-title">Стать специалистом</h5>
+                                    <p class="card-text">
+                                        Предлагайте свои услуги и находите новых клиентов на нашей платформе.
+                                    </p>
+                                    <a href="{% url 'login_auth:become_specialist' %}" class="btn btn-outline-primary">
+                                        Стать специалистом
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <a href="{% url 'catalog:home' %}" class="btn btn-link">
+                            Пропустить и перейти к объявлениям
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

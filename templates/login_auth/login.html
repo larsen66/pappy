@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block title %}Вход{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">Вход</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="phone-form">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="phone" class="form-label">Номер телефона</label>
+                            <input type="tel" class="form-control" id="phone" name="phone" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Получить код</button>
+                    </form>
+                    
+                    <hr>
+                    <div class="text-center">
+                        <a href="{% url 'login_auth:gosuslugi' %}" class="btn btn-outline-secondary">
+                            Войти через Госуслуги
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        $('#phone').inputmask("+7 (999) 999-99-99");
+    });
+</script>
+{% endblock %} 

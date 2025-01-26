@@ -1,27 +1,22 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Dialog, Message
+from .models import Chat, Message
 
-@admin.register(Dialog)
-class DialogAdmin(admin.ModelAdmin):
-    list_display = ['id', 'product', 'participants_list', 'created', 'updated']
-    list_filter = ['created', 'updated']
-    search_fields = ['participants__first_name', 'participants__last_name', 'participants__phone', 'product__title']
-    date_hierarchy = 'created'
-    readonly_fields = ['created', 'updated']
-    
-    def participants_list(self, obj):
-        return ', '.join([user.get_full_name() or user.phone for user in obj.participants.all()])
-    participants_list.short_description = 'Участники'
+@admin.register(Chat)
+class ChatAdmin(admin.ModelAdmin):
+    list_display = ('id', 'created_at', 'updated_at')
+    list_filter = ('created_at', 'updated_at')
+    filter_horizontal = ('participants',)
+    date_hierarchy = 'created_at'
+    search_fields = ('participants__phone',)
 
 @admin.register(Message)
 class MessageAdmin(admin.ModelAdmin):
-    list_display = ['dialog', 'sender', 'short_text', 'created', 'is_read']
-    list_filter = ['is_read', 'created']
-    search_fields = ['sender__first_name', 'sender__last_name', 'sender__phone', 'text']
-    date_hierarchy = 'created'
-    readonly_fields = ['dialog', 'sender', 'created', 'is_read']
-    actions = ['mark_as_read', 'mark_as_unread']
+    list_display = ('chat', 'sender', 'text', 'created_at', 'is_read')
+    list_filter = ('chat', 'created_at', 'is_read')
+    readonly_fields = ('chat', 'sender', 'created_at')
+    date_hierarchy = 'created_at'
+    search_fields = ('text', 'sender__phone')
     
     def short_text(self, obj):
         max_length = 50

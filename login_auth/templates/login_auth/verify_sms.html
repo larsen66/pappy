@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h3 class="card-title text-center mb-4">Подтверждение номера телефона</h3>
+                    
+                    {% if messages %}
+                    <div class="messages mb-3">
+                        {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }}">
+                            {{ message }}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    
+                    <p class="text-center mb-4">
+                        Мы отправили код подтверждения на номер<br>
+                        <strong>{{ phone }}</strong>
+                    </p>
+                    
+                    <form method="post" action="{% url 'login_auth:verify_sms' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="phone" value="{{ phone }}">
+                        {{ form|crispy }}
+                        
+                        <button type="submit" class="btn btn-primary w-100 mt-3">
+                            Подтвердить
+                        </button>
+                    </form>
+                    
+                    <div class="text-center mt-4">
+                        <span id="timer" class="d-block text-muted small"></span>
+                        <button id="resend-button" 
+                                onclick="resendCode()" 
+                                class="btn btn-link btn-sm" 
+                                style="display: none;">
+                            Отправить код повторно
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .btn-primary:disabled {
+        background-color: #ccc;
+        border-color: #ccc;
+        cursor: not-allowed;
+    }
+    .btn-primary:not(:disabled):hover {
+        background-color: #0056b3;
+    }
+    #id_code {
+        letter-spacing: 0.5em;
+        font-size: 1.5em;
+        text-align: center;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const codeInput = document.getElementById('id_code');
+    const submitButton = document.querySelector('button[type="submit"]');
+    const timerSpan = document.getElementById('timer');
+    const resendButton = document.getElementById('resend-button');
+    let timeLeft = 60;
+
+    // Ограничиваем ввод только цифрами
+    codeInput.addEventListener('input', function(e) {
+        this.value = this.value.replace(/[^\d]/g, '').substring(0, 4);
+        submitButton.disabled = this.value.length !== 4;
+    });
+
+    function updateTimer() {
+        if (timeLeft > 0) {
+            timerSpan.textContent = `Отправить код повторно через ${timeLeft} сек.`;
+            timeLeft--;
+            setTimeout(updateTimer, 1000);
+        } else {
+            timerSpan.style.display = 'none';
+            resendButton.style.display = 'inline-block';
+        }
+    }
+
+    updateTimer();
+});
+
+function resendCode() {
+    const phone = document.querySelector('input[name="phone"]').value;
+    
+    fetch('{% url "login_auth:resend_code" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: 'phone=' + encodeURIComponent(phone),
+        credentials: 'same-origin'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('timer').style.display = 'block';
+            document.getElementById('resend-button').style.display = 'none';
+            timeLeft = 60;
+            updateTimer();
+            alert('Новый код отправлен');
+        } else {
+            alert(data.error || 'Произошла ошибка при отправке кода');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Произошла ошибка при отправке кода');
+    });
+}
+</script>
+{% endblock %} 

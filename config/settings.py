@@ -67,7 +67,13 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
+        'DIRS': [
+            BASE_DIR / 'templates',
+            BASE_DIR / 'login_auth' / 'templates',
+            BASE_DIR / 'user_profile' / 'templates',
+            BASE_DIR / 'chat' / 'templates',
+            BASE_DIR / 'notifications' / 'templates',
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -75,7 +81,6 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'notifications.context_processors.unread_notifications_count',
             ],
         },
     },
@@ -88,14 +93,10 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME', 'pappi_db'),
-        'USER': os.getenv('DB_USER', 'pappi_user'),
-        'PASSWORD': os.getenv('DB_PASSWORD', 'pappi_password'),
-        'HOST': os.getenv('DB_HOST', 'localhost'),
-        'PORT': os.getenv('DB_PORT', '5432'),
-        'OPTIONS': {
-            'client_encoding': 'UTF8',
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+        'TEST': {
+            'NAME': ':memory:',
         },
     }
 }
@@ -158,7 +159,7 @@ INTERNAL_IPS = [
 ]
 
 # Authentication
-LOGIN_URL = 'login_auth:login'
+LOGIN_URL = 'login_auth:phone_login'
 LOGIN_REDIRECT_URL = 'catalog:home'
 LOGOUT_REDIRECT_URL = 'catalog:home'
 
@@ -169,4 +170,49 @@ AUTH_USER_MODEL = 'login_auth.User'
 PHONE_NUMBER_REGION = 'RU'
 
 # OTP Settings
-OTP_TOTP_ISSUER = 'Pappi' 
+OTP_TOTP_ISSUER = 'Pappi'
+
+# Gosuslugi OAuth Settings
+GOSUSLUGI_CLIENT_ID = os.getenv('GOSUSLUGI_CLIENT_ID', '')
+GOSUSLUGI_CLIENT_SECRET = os.getenv('GOSUSLUGI_CLIENT_SECRET', '')
+GOSUSLUGI_REDIRECT_URI = os.getenv('GOSUSLUGI_REDIRECT_URI', 'http://localhost:8000/auth/gosuslugi/callback/')
+
+# SMS API Settings
+SMS_API_ID = os.getenv('SMS_API_ID', '80746AAB-3314-EE3B-B48A-61C607DE7446')  # API ID from sms.ru
+SMS_ENABLED = os.getenv('SMS_ENABLED', 'True') == 'True'  # Enable/disable actual SMS sending
+SMS_TEST_MODE = os.getenv('SMS_TEST_MODE', 'True') == 'True'  # Enable/disable test mode for SMS
+
+# Logging
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+        'zaglushka_file': {
+            'level': 'ERROR',
+            'class': 'logging.FileHandler',
+            'filename': BASE_DIR / 'logs/zaglushka_errors.log',
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'zaglushka': {
+            'handlers': ['console', 'zaglushka_file'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+    },
+} 
