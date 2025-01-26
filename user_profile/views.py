@@ -18,6 +18,7 @@ from .models import (
 )
 from notifications.models import Notification
 import logging
+from django.contrib.auth import get_user_model
 
 logger = logging.getLogger(__name__)
 console_logger = logging.getLogger('console')
@@ -26,12 +27,16 @@ console_logger = logging.getLogger('console')
 def profile_settings(request):
     """Страница настроек профиля пользователя"""
     try:
+        # Получаем актуальный объект пользователя из базы данных
+        User = get_user_model()
+        user = User.objects.get(pk=request.user.pk)
+        
         if request.method == 'POST':
-            user_form = UserSettingsForm(request.POST, instance=request.user)
+            user_form = UserSettingsForm(request.POST, instance=user)
             profile_form = UserProfileForm(
                 request.POST,
                 request.FILES,
-                instance=request.user.userprofile
+                instance=user.userprofile
             )
             
             if user_form.is_valid() and profile_form.is_valid():
@@ -40,14 +45,14 @@ def profile_settings(request):
                 messages.success(request, _('Профиль успешно обновлен'))
                 return redirect('user_profile:settings')
         else:
-            user_form = UserSettingsForm(instance=request.user)
-            profile_form = UserProfileForm(instance=request.user.userprofile)
+            user_form = UserSettingsForm(instance=user)
+            profile_form = UserProfileForm(instance=user.userprofile)
         
         return render(request, 'user_profile/settings.html', {
             'user_form': user_form,
             'profile_form': profile_form,
-            'user': request.user,
-            'profile': request.user.userprofile
+            'user': user,
+            'profile': user.userprofile
         })
     except Exception as e:
         logger.error(f"Error in profile settings: {str(e)}", exc_info=True)
@@ -57,28 +62,75 @@ def profile_settings(request):
 @login_required
 def onboarding_view(request):
     """Обработка онбординга нового пользователя"""
-    if request.user.userprofile.is_onboarded:
+    # Получаем актуальный объект пользователя из базы данных
+    User = get_user_model()
+    user = User.objects.get(pk=request.user.pk)
+    
+    # Проверяем, прошел ли пользователь онбординг
+    try:
+        if hasattr(user, 'userprofile'):
+            if user.userprofile.is_onboarded:
+                return redirect('user_profile:settings')
+        else:
+            # Если у пользователя нет профиля, создаем его
+            from .models import UserProfile
+            UserProfile.objects.create(user=user)
+    except Exception as e:
+        console_logger.error(f"Error checking/creating profile for user {user.phone}: {str(e)}")
+        messages.error(request, 'Произошла ошибка при проверке профиля')
         return redirect('user_profile:settings')
     
     if request.method == 'POST':
         try:
             # Обновляем основную информацию пользователя
-            request.user.first_name = request.POST.get('first_name', '').strip()
-            request.user.last_name = request.POST.get('last_name', '').strip()
-            request.user.email = request.POST.get('email', '').strip()
-            request.user.save()
+            user.first_name = request.POST.get('first_name', '').strip()
+            user.last_name = request.POST.get('last_name', '').strip()
+            user.email = request.POST.get('email', '').strip()
+            user.save()
             
-            # Отмечаем, что пользователь прошел онбординг
-            request.user.userprofile.is_onboarded = True
-            request.user.userprofile.save()
+            # Обновляем профиль пользователя
+            profile = user.userprofile
+            profile.is_onboarded = True
+            profile.save()
             
-            console_logger.info(f"User {request.user.phone} completed onboarding")
+            # Обрабатываем роль пользователя
+            user_role = request.POST.get('user_role')
+            if user_role == 'seller':
+                from .models import SellerProfile
+                if not hasattr(user, 'seller_profile'):
+                    seller_profile = SellerProfile.objects.create(
+                        user=user,
+                        seller_type='individual'  # Значение по умолчанию
+                    )
+                user.is_seller = True
+                user.save()
+            elif user_role == 'specialist':
+                from .models import SpecialistProfile
+                if not hasattr(user, 'specialist_profile'):
+                    specialist_profile = SpecialistProfile.objects.create(
+                        user=user,
+                        specialization='veterinarian',  # Значение по умолчанию
+                        experience_years=0,  # Значение по умолчанию
+                        services='',  # Пустые услуги
+                        price_range='По договоренности',  # Значение по умолчанию
+                        rating=0.0  # Значение по умолчанию
+                    )
+                user.is_specialist = True
+                user.save()
+            
+            console_logger.info(f"User {user.phone} completed onboarding")
             messages.success(request, 'Профиль успешно обновлен!')
             
-            return redirect('catalog:home')
+            # Перенаправляем в зависимости от роли
+            if user_role == 'seller':
+                return redirect('user_profile:seller_profile')
+            elif user_role == 'specialist':
+                return redirect('user_profile:specialist_profile')
+            else:
+                return redirect('catalog:home')
             
         except Exception as e:
-            console_logger.error(f"Error during onboarding for user {request.user.phone}: {str(e)}")
+            console_logger.error(f"Error during onboarding for user {user.phone}: {str(e)}")
             messages.error(request, 'Произошла ошибка при сохранении профиля. Пожалуйста, попробуйте еще раз.')
     
     return render(request, 'user_profile/onboarding.html')
@@ -350,4 +402,32 @@ def settings_view(request):
 @login_required
 def seller_profile_view(request):
     # Временная заглушка для профиля продавца
-    return render(request, 'user_profile/settings.html') 
+    return render(request, 'user_profile/settings.html')
+
+@login_required
+def create_profile(request):
+    """Создание нового профиля пользователя"""
+    # Проверяем, есть ли уже профиль
+    if hasattr(request.user, 'userprofile'):
+        return redirect('user_profile:settings')
+    
+    if request.method == 'POST':
+        user_form = UserSettingsForm(request.POST, instance=request.user)
+        profile_form = UserProfileForm(request.POST, request.FILES)
+        
+        if user_form.is_valid() and profile_form.is_valid():
+            user_form.save()
+            profile = profile_form.save(commit=False)
+            profile.user = request.user
+            profile.save()
+            
+            messages.success(request, 'Профиль успешно создан!')
+            return redirect('user_profile:settings')
+    else:
+        user_form = UserSettingsForm(instance=request.user)
+        profile_form = UserProfileForm()
+    
+    return render(request, 'user_profile/create_profile.html', {
+        'user_form': user_form,
+        'profile_form': profile_form
+    }) 

@@ -17,6 +17,7 @@ class UserSettingsForm(forms.ModelForm):
     class Meta:
         model = User
         fields = ['first_name', 'last_name', 'email']
+        exclude = ['is_verified', 'is_seller', 'is_specialist', 'is_shelter']
         widgets = {
             'first_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': _('Имя')}),
             'last_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': _('Фамилия')}),
