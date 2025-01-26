@@ -1,0 +1,295 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}{{ announcement.title }} - Паппи{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Основная информация -->
+    <div class="col-md-8">
+        <!-- Галерея изображений -->
+        <div class="card mb-4">
+            <div id="announcementGallery" class="carousel slide" data-bs-ride="carousel">
+                <div class="carousel-inner">
+                    {% if announcement.images.all %}
+                        {% for image in announcement.images.all %}
+                            <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                                <img src="{{ image.image.url }}" class="d-block w-100" alt="{{ announcement.title }}">
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="carousel-item active">
+                            <div class="bg-light text-center py-5">
+                                <i class="fas fa-image fa-5x text-muted"></i>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+                {% if announcement.images.count > 1 %}
+                    <button class="carousel-control-prev" type="button" data-bs-target="#announcementGallery" data-bs-slide="prev" title="Предыдущее изображение">
+                        <span class="carousel-control-prev-icon"></span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#announcementGallery" data-bs-slide="next" title="Следующее изображение">
+                        <span class="carousel-control-next-icon"></span>
+                    </button>
+                {% endif %}
+            </div>
+
+            {% if announcement.images.count > 1 %}
+                <div class="card-body">
+                    <div class="row g-2">
+                        {% for image in announcement.images.all %}
+                            <div class="col-3">
+                                <img src="{{ image.image.url }}" class="img-thumbnail" alt="{{ announcement.title }}"
+                                     style="cursor: pointer;" data-bs-target="#announcementGallery" data-bs-slide-to="{{ forloop.counter0 }}">
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Основная информация -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <h1 class="h2 mb-2">{{ announcement.title }}</h1>
+                        <p class="text-muted mb-0">
+                            Опубликовано {{ announcement.created_at|naturaltime }}
+                            {% if announcement.views_count %}
+                                • {{ announcement.views_count }} просмотр{{ announcement.views_count|pluralize:"ов" }}
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="text-end">
+                        <h3 class="text-primary mb-2">{{ announcement.price|floatformat:0 }} ₽</h3>
+                        {% if announcement.is_negotiable %}
+                            <small class="text-muted">Цена договорная</small>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% if announcement.type == 'animal' %}
+                    <div class="row mb-4">
+                        <div class="col-sm-6">
+                            <p class="mb-1"><strong>Вид:</strong> {{ announcement.get_species_display }}</p>
+                            <p class="mb-1"><strong>Порода:</strong> {{ announcement.breed }}</p>
+                            <p class="mb-1"><strong>Пол:</strong> {{ announcement.get_gender_display }}</p>
+                        </div>
+                        <div class="col-sm-6">
+                            <p class="mb-1"><strong>Возраст:</strong> {{ announcement.age }}</p>
+                            <p class="mb-1"><strong>Окрас:</strong> {{ announcement.color }}</p>
+                            {% if announcement.pedigree %}
+                                <p class="mb-1"><strong>Родословная:</strong> Есть</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% elif announcement.type == 'service' %}
+                    <div class="row mb-4">
+                        <div class="col-sm-6">
+                            <p class="mb-1"><strong>Тип услуги:</strong> {{ announcement.get_service_type_display }}</p>
+                            <p class="mb-1"><strong>Опыт работы:</strong> {{ announcement.experience }} лет</p>
+                        </div>
+                        <div class="col-sm-6">
+                            <p class="mb-1"><strong>График работы:</strong> {{ announcement.schedule }}</p>
+                            {% if announcement.home_visit %}
+                                <p class="mb-1"><strong>Выезд на дом:</strong> Да</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                <h5 class="mb-3">Описание</h5>
+                <div class="mb-4">
+                    {{ announcement.description|linebreaks }}
+                </div>
+
+                {% if announcement.address %}
+                    <h5 class="mb-3">Местоположение</h5>
+                    <p class="mb-4">{{ announcement.address }}</p>
+                {% endif %}
+
+                <!-- Кнопки действий -->
+                <div class="d-flex gap-2">
+                    {% if user.is_authenticated %}
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#contactModal">
+                            <i class="fas fa-comments me-2"></i>Написать сообщение
+                        </button>
+                        {% if announcement.author != user %}
+                            <button type="button" class="btn btn-outline-primary favorite-btn" data-id="{{ announcement.id }}"
+                                    title="{% if is_favorite %}Удалить из избранного{% else %}Добавить в избранное{% endif %}">
+                                <i class="fas fa-heart{% if not is_favorite %}-broken{% endif %}"></i>
+                            </button>
+                        {% endif %}
+                        {% if announcement.author == user %}
+                            <a href="{% url 'announcements:edit' announcement.id %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-edit me-2"></i>Редактировать
+                            </a>
+                            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                                <i class="fas fa-trash-alt me-2"></i>Удалить
+                            </button>
+                        {% endif %}
+                    {% else %}
+                        <a href="{% url 'login_auth:login' %}?next={{ request.path }}" class="btn btn-primary">
+                            Войдите, чтобы написать сообщение
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Боковая панель -->
+    <div class="col-md-4">
+        <!-- Информация о продавце -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title mb-4">Продавец</h5>
+                <div class="d-flex align-items-center mb-3">
+                    {% if announcement.author.profile_image %}
+                        <img src="{{ announcement.author.profile_image.url }}" class="rounded-circle me-3" width="64" height="64" alt="{{ announcement.author.get_full_name }}">
+                    {% else %}
+                        <div class="rounded-circle bg-light text-center me-3" style="width: 64px; height: 64px; line-height: 64px;">
+                            <i class="fas fa-user fa-2x text-muted"></i>
+                        </div>
+                    {% endif %}
+                    <div>
+                        <h6 class="mb-1">{{ announcement.author.get_full_name }}</h6>
+                        <p class="text-muted mb-0">На сайте с {{ announcement.author.date_joined|date:"F Y" }}</p>
+                    </div>
+                </div>
+                {% if announcement.author.is_seller %}
+                    <div class="mb-3">
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="text-warning me-2">
+                                {% with ''|center:5 as range %}
+                                {% for _ in range %}
+                                    <i class="fas fa-star{% if forloop.counter > announcement.author.rating %}-o{% endif %}"></i>
+                                {% endfor %}
+                                {% endwith %}
+                            </div>
+                            <span>{{ announcement.author.rating|floatformat:1 }}</span>
+                        </div>
+                        <small class="text-muted">{{ announcement.author.reviews_count }} отзыв{{ announcement.author.reviews_count|pluralize:"ов" }}</small>
+                    </div>
+                {% endif %}
+                <a href="{% url 'profile:view' announcement.author.id %}" class="btn btn-outline-primary w-100">
+                    Все объявления продавца
+                </a>
+            </div>
+        </div>
+
+        <!-- Похожие объявления -->
+        {% if similar_announcements %}
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title mb-4">Похожие объявления</h5>
+                    {% for similar in similar_announcements %}
+                        <div class="card mb-3">
+                            <div class="row g-0">
+                                <div class="col-4">
+                                    {% if similar.main_image %}
+                                        <img src="{{ similar.main_image.url }}" class="img-fluid rounded-start" alt="{{ similar.title }}">
+                                    {% else %}
+                                        <div class="bg-light text-center h-100 d-flex align-items-center justify-content-center">
+                                            <i class="fas fa-image fa-2x text-muted"></i>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-8">
+                                    <div class="card-body">
+                                        <h6 class="card-title mb-1">{{ similar.title }}</h6>
+                                        <p class="card-text">
+                                            <strong class="text-primary">{{ similar.price|floatformat:0 }} ₽</strong>
+                                        </p>
+                                        <a href="{% url 'announcements:detail' similar.id %}" class="stretched-link"></a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Модальное окно для сообщения -->
+<div class="modal fade" id="contactModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Написать сообщение</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" title="Закрыть"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" action="{% url 'chat:start' announcement.id %}">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="message" class="form-label">Ваше сообщение</label>
+                        <textarea class="form-control" id="message" name="message" rows="4" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Отправить</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для удаления -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Подтверждение удаления</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" title="Закрыть"></button>
+            </div>
+            <div class="modal-body">
+                <p>Вы действительно хотите удалить это объявление?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <form method="post" action="{% url 'announcements:delete' announcement.id %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Удалить</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Обработка добавления/удаления из избранного
+    const favoriteBtn = document.querySelector('.favorite-btn');
+    if (favoriteBtn) {
+        favoriteBtn.addEventListener('click', function() {
+            const announcementId = this.dataset.id;
+            fetch(`/api/favorites/${announcementId}/toggle/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                const icon = this.querySelector('i');
+                if (data.is_favorite) {
+                    icon.classList.remove('fa-heart-broken');
+                    icon.classList.add('fa-heart');
+                    this.title = 'Удалить из избранного';
+                } else {
+                    icon.classList.remove('fa-heart');
+                    icon.classList.add('fa-heart-broken');
+                    this.title = 'Добавить в избранное';
+                }
+            });
+        });
+    }
+});
+</script>
+{% endblock %} 

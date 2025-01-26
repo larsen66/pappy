@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load crispy_forms_tags %}
+
+{% block title %}{% trans "Модерация объявления" %}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>{% trans "Модерация объявления" %}</h2>
+    
+    <div class="card mb-4">
+        <div class="card-body">
+            <h3 class="card-title">{{ announcement.title }}</h3>
+            
+            {% if announcement.images.exists %}
+            <div class="row mb-4">
+                {% for image in announcement.images.all %}
+                <div class="col-md-4 mb-3">
+                    <img src="{{ image.image.url }}" class="img-fluid rounded" alt="{{ announcement.title }}">
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+            <div class="row">
+                <div class="col-md-8">
+                    <h4>{% trans "Описание" %}</h4>
+                    <p>{{ announcement.description }}</p>
+                    
+                    <h4>{% trans "Детали" %}</h4>
+                    <ul class="list-unstyled">
+                        <li><strong>{% trans "Тип:" %}</strong> {{ announcement.get_type_display }}</li>
+                        <li><strong>{% trans "Категория:" %}</strong> {{ announcement.category }}</li>
+                        <li><strong>{% trans "Цена:" %}</strong> {{ announcement.price }}</li>
+                        <li><strong>{% trans "Местоположение:" %}</strong> {{ announcement.location }}</li>
+                    </ul>
+                    
+                    {% if announcement.type == 'animal' %}
+                    <h4>{% trans "Характеристики животного" %}</h4>
+                    <ul class="list-unstyled">
+                        <li><strong>{% trans "Вид:" %}</strong> {{ announcement.animal_details.species }}</li>
+                        <li><strong>{% trans "Порода:" %}</strong> {{ announcement.animal_details.breed }}</li>
+                        <li><strong>{% trans "Возраст:" %}</strong> {{ announcement.animal_details.age }}</li>
+                        <li><strong>{% trans "Пол:" %}</strong> {{ announcement.animal_details.get_gender_display }}</li>
+                        <li><strong>{% trans "Размер:" %}</strong> {{ announcement.animal_details.get_size_display }}</li>
+                        <li><strong>{% trans "Окрас:" %}</strong> {{ announcement.animal_details.color }}</li>
+                    </ul>
+                    {% endif %}
+                    
+                    {% if announcement.type == 'service' %}
+                    <h4>{% trans "Детали услуги" %}</h4>
+                    <ul class="list-unstyled">
+                        <li><strong>{% trans "Тип услуги:" %}</strong> {{ announcement.service_details.get_service_type_display }}</li>
+                        <li><strong>{% trans "Опыт работы:" %}</strong> {{ announcement.service_details.experience }}</li>
+                        <li><strong>{% trans "График работы:" %}</strong> {{ announcement.service_details.schedule }}</li>
+                        {% if announcement.service_details.certificates %}
+                        <li><strong>{% trans "Сертификаты:" %}</strong> {{ announcement.service_details.certificates }}</li>
+                        {% endif %}
+                    </ul>
+                    {% endif %}
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h4>{% trans "Информация об авторе" %}</h4>
+                            <ul class="list-unstyled">
+                                <li><strong>{% trans "Имя:" %}</strong> {{ announcement.author.get_full_name }}</li>
+                                <li><strong>{% trans "Телефон:" %}</strong> {{ announcement.author.phone }}</li>
+                                <li><strong>{% trans "Дата регистрации:" %}</strong> {{ announcement.author.date_joined|date:"d.m.Y" }}</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="card mt-4">
+                        <div class="card-body">
+                            <h4>{% trans "Действия модератора" %}</h4>
+                            <form method="post" action="{% url 'announcements:moderate' pk=announcement.pk %}">
+                                {% csrf_token %}
+                                <div class="form-group">
+                                    <label for="reason">{% trans "Причина (необязательно):" %}</label>
+                                    <textarea name="reason" id="reason" class="form-control" rows="3"></textarea>
+                                </div>
+                                <div class="d-grid gap-2 mt-3">
+                                    <button type="submit" name="action" value="approve" class="btn btn-success">
+                                        {% trans "Одобрить" %}
+                                    </button>
+                                    <button type="submit" name="action" value="reject" class="btn btn-danger">
+                                        {% trans "Отклонить" %}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Регистрация - Паппи{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="card-title text-center mb-4">Регистрация</h2>
+
+                <!-- Шаг 1: Ввод телефона -->
+                <div id="step-1" class="{% if current_step != 1 %}d-none{% endif %}">
+                    <form method="post" id="phone-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="step" value="1">
+                        <div class="mb-3">
+                            <label for="phone" class="form-label">Номер телефона</label>
+                            <input type="tel" class="form-control" id="phone" name="phone" 
+                                   placeholder="+7 (999) 123-45-67" required
+                                   pattern="\+7\s?\(?\d{3}\)?\s?\d{3}[-\s]?\d{2}[-\s]?\d{2}"
+                                   value="{{ phone|default:'' }}">
+                            <div class="form-text">Мы отправим код подтверждения на этот номер</div>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">
+                            Получить код
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Шаг 2: Подтверждение кода -->
+                <div id="step-2" class="{% if current_step != 2 %}d-none{% endif %}">
+                    <form method="post" id="code-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="step" value="2">
+                        <input type="hidden" name="phone" value="{{ phone }}">
+                        <div class="mb-3">
+                            <label for="code" class="form-label">Код из SMS</label>
+                            <input type="text" class="form-control" id="code" name="code" 
+                                   placeholder="1234" required maxlength="4" pattern="\d{4}">
+                            <div class="form-text">
+                                Код отправлен на номер {{ phone }}
+                                <a href="#" id="change-phone" class="text-decoration-none">Изменить</a>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">
+                            Подтвердить
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Шаг 3: Заполнение профиля -->
+                <div id="step-3" class="{% if current_step != 3 %}d-none{% endif %}">
+                    <form method="post" id="profile-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="step" value="3">
+                        <input type="hidden" name="phone" value="{{ phone }}">
+                        
+                        <div class="mb-3">
+                            <label for="first_name" class="form-label">Имя</label>
+                            <input type="text" class="form-control" id="first_name" name="first_name" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="last_name" class="form-label">Фамилия</label>
+                            <input type="text" class="form-control" id="last_name" name="last_name" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email (необязательно)</label>
+                            <input type="email" class="form-control" id="email" name="email">
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="terms" name="terms" required>
+                                <label class="form-check-label" for="terms">
+                                    Я согласен с <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal">условиями использования</a>
+                                </label>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100">
+                            Завершить регистрацию
+                        </button>
+                    </form>
+                </div>
+
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} mt-3">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+            <div class="card-footer text-center py-3">
+                <div>
+                    Уже есть аккаунт? 
+                    <a href="{% url 'login_auth:login' %}" class="text-decoration-none">
+                        Войти
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно с условиями использования -->
+<div class="modal fade" id="termsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Условия использования</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body">
+                <h6>1. Общие положения</h6>
+                <p>Текст условий использования...</p>
+                
+                <h6>2. Правила размещения объявлений</h6>
+                <p>Текст правил...</p>
+                
+                <h6>3. Конфиденциальность</h6>
+                <p>Политика конфиденциальности...</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Маска для телефона
+    const phoneInput = document.getElementById('phone');
+    if (phoneInput) {
+        phoneInput.addEventListener('input', function(e) {
+            let x = e.target.value.replace(/\D/g, '')
+                .match(/(\d{0,1})(\d{0,3})(\d{0,3})(\d{0,2})(\d{0,2})/);
+            if (!x[1]) {
+                e.target.value = '+7';
+            } else {
+                e.target.value = '+7' + (x[2] ? ' (' + x[2] : '') +
+                    (x[3] ? ') ' + x[3] : '') +
+                    (x[4] ? '-' + x[4] : '') +
+                    (x[5] ? '-' + x[5] : '');
+            }
+        });
+    }
+
+    // Переключение между шагами
+    const changePhoneLink = document.getElementById('change-phone');
+    if (changePhoneLink) {
+        changePhoneLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            document.getElementById('step-1').classList.remove('d-none');
+            document.getElementById('step-2').classList.add('d-none');
+        });
+    }
+});
+</script>
+{% endblock %} 

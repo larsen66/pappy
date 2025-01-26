@@ -1,0 +1,345 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Объявления - Паппи{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Фильтры (боковая панель) -->
+    <div class="col-md-3">
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Фильтры</h5>
+                <form method="get" id="filter-form">
+                    <!-- Тип объявления -->
+                    <div class="mb-3">
+                        <label class="form-label">Тип объявления</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="type" id="type-all" value="" 
+                                   {% if not request.GET.type %}checked{% endif %}>
+                            <label class="form-check-label" for="type-all">Все</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="type" id="type-animal" value="animal"
+                                   {% if request.GET.type == 'animal' %}checked{% endif %}>
+                            <label class="form-check-label" for="type-animal">Животные</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="type" id="type-service" value="service"
+                                   {% if request.GET.type == 'service' %}checked{% endif %}>
+                            <label class="form-check-label" for="type-service">Услуги</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="type" id="type-lost" value="lost"
+                                   {% if request.GET.type == 'lost' %}checked{% endif %}>
+                            <label class="form-check-label" for="type-lost">Потеряшки</label>
+                        </div>
+                    </div>
+
+                    <!-- Категория -->
+                    <div class="mb-3">
+                        <label for="category" class="form-label">Категория</label>
+                        <select class="form-select" id="category" name="category">
+                            <option value="">Все категории</option>
+                            {% for category in categories %}
+                                <option value="{{ category.id }}" 
+                                        {% if request.GET.category == category.id|stringformat:"i" %}selected{% endif %}>
+                                    {{ category.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Цена -->
+                    <div class="mb-3">
+                        <label class="form-label">Цена</label>
+                        <div class="input-group mb-2">
+                            <input type="number" class="form-control" name="price_min" placeholder="От"
+                                   value="{{ request.GET.price_min }}">
+                            <span class="input-group-text">₽</span>
+                        </div>
+                        <div class="input-group">
+                            <input type="number" class="form-control" name="price_max" placeholder="До"
+                                   value="{{ request.GET.price_max }}">
+                            <span class="input-group-text">₽</span>
+                        </div>
+                    </div>
+
+                    <!-- Дополнительные фильтры для животных -->
+                    <div id="animal-filters" class="{% if request.GET.type != 'animal' %}d-none{% endif %}">
+                        <div class="mb-3">
+                            <label for="species" class="form-label">Вид животного</label>
+                            <select class="form-select" id="species" name="species">
+                                <option value="">Все</option>
+                                <option value="dog" {% if request.GET.species == 'dog' %}selected{% endif %}>Собаки</option>
+                                <option value="cat" {% if request.GET.species == 'cat' %}selected{% endif %}>Кошки</option>
+                                <!-- Другие виды -->
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="breed" class="form-label">Порода</label>
+                            <input type="text" class="form-control" id="breed" name="breed" 
+                                   value="{{ request.GET.breed }}">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Пол</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="gender" id="gender-all" value=""
+                                       {% if not request.GET.gender %}checked{% endif %}>
+                                <label class="form-check-label" for="gender-all">Любой</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="gender" id="gender-male" value="male"
+                                       {% if request.GET.gender == 'male' %}checked{% endif %}>
+                                <label class="form-check-label" for="gender-male">Мальчик</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="gender" id="gender-female" value="female"
+                                       {% if request.GET.gender == 'female' %}checked{% endif %}>
+                                <label class="form-check-label" for="gender-female">Девочка</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Дополнительные фильтры для услуг -->
+                    <div id="service-filters" class="{% if request.GET.type != 'service' %}d-none{% endif %}">
+                        <div class="mb-3">
+                            <label for="service_type" class="form-label">Тип услуги</label>
+                            <select class="form-select" id="service_type" name="service_type">
+                                <option value="">Все услуги</option>
+                                <option value="grooming" {% if request.GET.service_type == 'grooming' %}selected{% endif %}>Груминг</option>
+                                <option value="training" {% if request.GET.service_type == 'training' %}selected{% endif %}>Дрессировка</option>
+                                <option value="walking" {% if request.GET.service_type == 'walking' %}selected{% endif %}>Выгул</option>
+                                <!-- Другие услуги -->
+                            </select>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">Применить</button>
+                    <button type="button" class="btn btn-outline-secondary w-100 mt-2" id="reset-filters">Сбросить</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Список объявлений -->
+    <div class="col-md-9">
+        <!-- Верхняя панель -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h1 class="h3 mb-0">
+                    {% if request.GET.type == 'animal' %}
+                        Животные
+                    {% elif request.GET.type == 'service' %}
+                        Услуги
+                    {% elif request.GET.type == 'lost' %}
+                        Потеряшки
+                    {% else %}
+                        Все объявления
+                    {% endif %}
+                </h1>
+                <small class="text-muted">Найдено: {{ page_obj.paginator.count }}</small>
+            </div>
+            <div class="d-flex gap-2">
+                <!-- Переключатель вида -->
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-secondary active" id="grid-view" title="Плитка">
+                        <i class="fas fa-th-large"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" id="list-view" title="Список">
+                        <i class="fas fa-list"></i>
+                    </button>
+                </div>
+                <!-- Сортировка -->
+                <select class="form-select" style="width: auto;" id="sort-select" name="sort" aria-label="Сортировка объявлений">
+                    <option value="-created_at" {% if request.GET.sort == '-created_at' %}selected{% endif %}>Сначала новые</option>
+                    <option value="price" {% if request.GET.sort == 'price' %}selected{% endif %}>Сначала дешевле</option>
+                    <option value="-price" {% if request.GET.sort == '-price' %}selected{% endif %}>Сначала дороже</option>
+                    <option value="-views_count" {% if request.GET.sort == '-views_count' %}selected{% endif %}>По популярности</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Сетка объявлений -->
+        <div class="row row-cols-1 row-cols-md-3 g-4" id="announcements-grid">
+            {% for announcement in announcements %}
+            <div class="col">
+                <div class="card h-100">
+                    {% if announcement.main_image %}
+                        <img src="{{ announcement.main_image.url }}" class="card-img-top" alt="{{ announcement.title }}">
+                    {% else %}
+                        <div class="card-img-top bg-light text-center py-5">
+                            <i class="fas fa-image fa-3x text-muted"></i>
+                        </div>
+                    {% endif %}
+                    <div class="card-body">
+                        <h5 class="card-title">{{ announcement.title }}</h5>
+                        <p class="card-text text-muted">{{ announcement.description|truncatechars:100 }}</p>
+                        <p class="card-text">
+                            <strong class="text-primary">{{ announcement.price|floatformat:0 }} ₽</strong>
+                        </p>
+                    </div>
+                    <div class="card-footer bg-transparent">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">{{ announcement.created_at|naturaltime }}</small>
+                            <a href="{% url 'announcements:detail' announcement.id %}" class="btn btn-outline-primary btn-sm">
+                                Подробнее
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12">
+                <div class="alert alert-info">
+                    По вашему запросу ничего не найдено. Попробуйте изменить параметры поиска.
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Список объявлений (альтернативный вид) -->
+        <div class="d-none" id="announcements-list">
+            {% for announcement in announcements %}
+            <div class="card mb-3">
+                <div class="row g-0">
+                    <div class="col-md-3">
+                        {% if announcement.main_image %}
+                            <img src="{{ announcement.main_image.url }}" class="img-fluid rounded-start" alt="{{ announcement.title }}">
+                        {% else %}
+                            <div class="bg-light text-center py-5 h-100">
+                                <i class="fas fa-image fa-3x text-muted"></i>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-9">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <h5 class="card-title">{{ announcement.title }}</h5>
+                                <strong class="text-primary">{{ announcement.price|floatformat:0 }} ₽</strong>
+                            </div>
+                            <p class="card-text">{{ announcement.description|truncatechars:200 }}</p>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted">{{ announcement.created_at|naturaltime }}</small>
+                                <a href="{% url 'announcements:detail' announcement.id %}" class="btn btn-outline-primary">
+                                    Подробнее
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Пагинация -->
+        {% if is_paginated %}
+        <nav aria-label="Навигация по страницам" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}">
+                            <i class="fas fa-angle-double-left"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}">
+                            <i class="fas fa-angle-left"></i>
+                        </a>
+                    </li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}">
+                                {{ num }}
+                            </a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}">
+                            <i class="fas fa-angle-right"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}">
+                            <i class="fas fa-angle-double-right"></i>
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Переключение вида отображения
+    const gridView = document.getElementById('grid-view');
+    const listView = document.getElementById('list-view');
+    const gridContainer = document.getElementById('announcements-grid');
+    const listContainer = document.getElementById('announcements-list');
+
+    gridView.addEventListener('click', function() {
+        gridView.classList.add('active');
+        listView.classList.remove('active');
+        gridContainer.classList.remove('d-none');
+        listContainer.classList.add('d-none');
+    });
+
+    listView.addEventListener('click', function() {
+        listView.classList.add('active');
+        gridView.classList.remove('active');
+        listContainer.classList.remove('d-none');
+        gridContainer.classList.add('d-none');
+    });
+
+    // Сортировка
+    const sortSelect = document.getElementById('sort-select');
+    sortSelect.addEventListener('change', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        urlParams.set('sort', this.value);
+        window.location.search = urlParams.toString();
+    });
+
+    // Показ/скрытие дополнительных фильтров
+    const typeRadios = document.querySelectorAll('input[name="type"]');
+    const animalFilters = document.getElementById('animal-filters');
+    const serviceFilters = document.getElementById('service-filters');
+
+    typeRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (this.value === 'animal') {
+                animalFilters.classList.remove('d-none');
+                serviceFilters.classList.add('d-none');
+            } else if (this.value === 'service') {
+                serviceFilters.classList.remove('d-none');
+                animalFilters.classList.add('d-none');
+            } else {
+                animalFilters.classList.add('d-none');
+                serviceFilters.classList.add('d-none');
+            }
+        });
+    });
+
+    // Сброс фильтров
+    document.getElementById('reset-filters').addEventListener('click', function() {
+        window.location.href = window.location.pathname;
+    });
+});
+</script>
+{% endblock %} 

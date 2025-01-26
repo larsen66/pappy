@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %}Запрос на верификацию | Pappi{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">Запрос на верификацию</h4>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4">
+                        Для верификации вашего аккаунта, пожалуйста, загрузите необходимые документы.
+                        Мы рассмотрим ваш запрос в течение 24 часов.
+                    </p>
+
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        {{ form|crispy }}
+                        
+                        <div class="mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-upload"></i> Отправить документы
+                            </button>
+                            <a href="{% url 'user_profile:settings' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Вернуться
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/verification.css' %}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/verification.js' %}"></script>
+{% endblock %} 

@@ -5,7 +5,8 @@ from .models import (
     UserProfile,
     SellerProfile,
     SpecialistProfile,
-    VerificationDocument
+    VerificationDocument,
+    Review
 )
 
 @admin.register(UserProfile)
@@ -28,6 +29,13 @@ class SpecialistProfileAdmin(admin.ModelAdmin):
 
 @admin.register(VerificationDocument)
 class VerificationDocumentAdmin(admin.ModelAdmin):
-    list_display = ('user', 'uploaded_at', 'is_verified')
-    list_filter = ('is_verified', 'uploaded_at')
-    search_fields = ('user__phone', 'comment') 
+    list_display = ['user', 'document_type', 'status', 'created_at']
+    list_filter = ['status', 'document_type', 'created_at']
+    search_fields = ['user__phone', 'document_type']
+    readonly_fields = ['created_at', 'updated_at']
+
+@admin.register(Review)
+class ReviewAdmin(admin.ModelAdmin):
+    list_display = ['author', 'seller', 'specialist', 'rating', 'created_at']
+    list_filter = ['rating', 'created_at']
+    search_fields = ['author__phone', 'comment'] 

@@ -15,9 +15,8 @@ def create_user_profile(sender, instance, created, **kwargs):
 @receiver(post_save, sender=User)
 def save_user_profile(sender, instance, **kwargs):
     """Сохраняет профиль пользователя при сохранении пользователя"""
-    if not hasattr(instance, 'profile'):
-        UserProfile.objects.create(user=instance)
-    instance.profile.save()
+    if hasattr(instance, 'userprofile'):
+        instance.userprofile.save()
 
 @receiver(post_save, sender=User)
 def create_seller_profile(sender, instance, created, **kwargs):

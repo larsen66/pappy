@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block title %}Подтверждение кода{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="text-center">Подтверждение кода</h3>
+                </div>
+                <div class="card-body">
+                    <p class="text-center mb-4">
+                        Код отправлен на номер {{ phone }}
+                    </p>
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="code" class="form-label">Введите код из SMS</label>
+                            <input type="text" class="form-control" id="code" name="code" 
+                                   placeholder="1234" required maxlength="4" pattern="\d{4}">
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">Подтвердить</button>
+                            <a href="{% url 'login_auth:resend_code' %}" class="btn btn-outline-secondary">
+                                Отправить код повторно
+                            </a>
+                            <a href="{% url 'login_auth:phone_login' %}" class="btn btn-link">
+                                Изменить номер телефона
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

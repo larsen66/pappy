@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block title %}Вход по номеру телефона{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-4">
+            <div class="mt-4 mb-3">
+                <a href="javascript:history.back()" class="text-decoration-none text-dark">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <span class="ms-2">Регистрация / Авторизация</span>
+            </div>
+            
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <h5 class="mb-4">Вход по номеру телефона</h5>
+                    <p class="text-muted small mb-4">Введите свой номер телефона для авторизации. Мы отправим вам проверочный код.</p>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="form-group mb-4">
+                            <label for="phone" class="form-label text-muted small">Ваш номер телефона</label>
+                            <input type="tel" 
+                                   class="form-control form-control-lg" 
+                                   id="phone" 
+                                   name="phone" 
+                                   placeholder="+7 (999) 999-99-99"
+                                   required>
+                        </div>
+                        
+                        {% if messages %}
+                            {% for message in messages %}
+                                <div class="alert alert-{{ message.tags }} mb-4">
+                                    {{ message }}
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                        
+                        <button type="submit" class="btn btn-primary w-100 py-2">
+                            Продолжить
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const phoneInput = document.getElementById('phone');
+    if (phoneInput) {
+        phoneInput.addEventListener('input', function(e) {
+            let x = e.target.value.replace(/\D/g, '')
+                .match(/(\d{0,1})(\d{0,3})(\d{0,3})(\d{0,2})(\d{0,2})/);
+            if (!x[1]) {
+                e.target.value = '+7';
+            } else {
+                e.target.value = '+7' + (x[2] ? ' (' + x[2] : '') +
+                    (x[3] ? ') ' + x[3] : '') +
+                    (x[4] ? '-' + x[4] : '') +
+                    (x[5] ? '-' + x[5] : '');
+            }
+        });
+        
+        // Устанавливаем начальное значение
+        phoneInput.value = '+7';
+    }
+});
+</script>
+{% endblock %} 

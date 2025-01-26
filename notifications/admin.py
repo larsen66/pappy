@@ -3,11 +3,11 @@ from .models import Notification
 
 @admin.register(Notification)
 class NotificationAdmin(admin.ModelAdmin):
-    list_display = ['recipient', 'type', 'title', 'is_read', 'created']
-    list_filter = ['type', 'is_read', 'created']
-    search_fields = ['recipient__first_name', 'recipient__last_name', 'recipient__phone', 'title', 'text']
-    readonly_fields = ['recipient', 'type', 'title', 'text', 'link', 'created']
-    date_hierarchy = 'created'
+    list_display = ('user', 'notification_type', 'title', 'is_read', 'created_at')
+    list_filter = ('notification_type', 'is_read', 'created_at')
+    readonly_fields = ('user', 'notification_type', 'title', 'message', 'created_at')
+    date_hierarchy = 'created_at'
+    search_fields = ('user__phone', 'title', 'message')
     actions = ['mark_as_read', 'mark_as_unread']
     
     def mark_as_read(self, request, queryset):

@@ -4,45 +4,76 @@ from django.conf import settings
 class Notification(models.Model):
     TYPES = (
         ('message', 'Новое сообщение'),
-        ('match', 'Взаимный лайк'),
-        ('product_status', 'Изменение статуса объявления'),
-        ('verification', 'Статус верификации'),
-        ('lost_pet_nearby', 'Потерянный питомец рядом'),
+        ('profile', 'Обновление профиля'),
+        ('system', 'Системное уведомление'),
     )
     
-    recipient = models.ForeignKey(
+    user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='notifications',
-        verbose_name='Получатель'
+        verbose_name='Пользователь'
     )
-    type = models.CharField('Тип', max_length=20, choices=TYPES)
-    title = models.CharField('Заголовок', max_length=255)
-    text = models.TextField('Текст')
-    link = models.CharField('Ссылка', max_length=255, blank=True)
-    is_read = models.BooleanField('Прочитано', default=False)
-    created = models.DateTimeField('Создано', auto_now_add=True)
-    
+    notification_type = models.CharField(
+        max_length=20,
+        choices=TYPES,
+        verbose_name='Тип уведомления'
+    )
+    title = models.CharField(
+        max_length=255,
+        verbose_name='Заголовок'
+    )
+    message = models.TextField(
+        verbose_name='Сообщение'
+    )
+    is_read = models.BooleanField(
+        default=False,
+        verbose_name='Прочитано'
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Создано'
+    )
+
     class Meta:
-        ordering = ['-created']
         verbose_name = 'Уведомление'
         verbose_name_plural = 'Уведомления'
-    
+        ordering = ['-created_at']
+
     def __str__(self):
-        return f'{self.get_type_display()} для {self.recipient.get_full_name()}'
+        return f'{self.get_notification_type_display()} для {self.user}'
     
     @classmethod
-    def create_message_notification(cls, recipient, dialog):
+    def create_message_notification(cls, user, chat):
         """Создает уведомление о новом сообщении"""
-        last_message = dialog.messages.last()
-        if last_message and last_message.sender != recipient:
+        last_message = chat.messages.last()
+        if last_message and last_message.sender != user:
             return cls.objects.create(
-                recipient=recipient,
-                type='message',
+                user=user,
+                notification_type='message',
                 title='Новое сообщение',
-                text=f'Новое сообщение от {last_message.sender.get_full_name()} по объявлению "{dialog.product.title}"',
-                link=f'/chat/dialog/{dialog.id}/'
+                message=f'Новое сообщение от {last_message.sender}'
             )
+    
+    @classmethod
+    def create_profile_notification(cls, user, action):
+        """Создает уведомление об изменении профиля"""
+        return cls.objects.create(
+            user=user,
+            notification_type='profile',
+            title='Профиль обновлен',
+            message=f'Ваш профиль был {action}'
+        )
+    
+    @classmethod
+    def create_system_notification(cls, user, title, message):
+        """Создает системное уведомление"""
+        return cls.objects.create(
+            user=user,
+            notification_type='system',
+            title=title,
+            message=message
+        )
     
     @classmethod
     def create_match_notification(cls, recipient, product):
