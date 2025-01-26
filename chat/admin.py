@@ -1,48 +1,54 @@
 from django.contrib import admin
-from django.utils.html import format_html
-from .models import Dialog, Message
+from .models import Dialog, Message, MessageAttachment, LocationMessage, VoiceMessage, GroupChat
 
 @admin.register(Dialog)
 class DialogAdmin(admin.ModelAdmin):
-    list_display = ['id', 'product', 'participants_list', 'created', 'updated']
-    list_filter = ['created', 'updated']
-    search_fields = ['participants__first_name', 'participants__last_name', 'participants__phone', 'product__title']
-    date_hierarchy = 'created'
-    readonly_fields = ['created', 'updated']
+    list_display = ['id', 'get_participants', 'last_message', 'created_at']
+    list_filter = ['created_at']
+    search_fields = ['participants__username', 'participants__email']
+    readonly_fields = ['created_at']
+    date_hierarchy = 'created_at'
     
-    def participants_list(self, obj):
-        return ', '.join([user.get_full_name() or user.phone for user in obj.participants.all()])
-    participants_list.short_description = 'Участники'
+    def get_participants(self, obj):
+        return ", ".join([user.get_full_name() or user.username for user in obj.participants.all()])
+    get_participants.short_description = 'Участники'
 
 @admin.register(Message)
 class MessageAdmin(admin.ModelAdmin):
-    list_display = ['dialog', 'sender', 'short_text', 'created', 'is_read']
-    list_filter = ['is_read', 'created']
-    search_fields = ['sender__first_name', 'sender__last_name', 'sender__phone', 'text']
-    date_hierarchy = 'created'
-    readonly_fields = ['dialog', 'sender', 'created', 'is_read']
-    actions = ['mark_as_read', 'mark_as_unread']
+    list_display = ['id', 'dialog', 'sender', 'content', 'created_at', 'is_read']
+    list_filter = ['is_read', 'created_at']
+    search_fields = ['content', 'sender__username', 'sender__email']
+    readonly_fields = ['dialog', 'sender', 'created_at']
+    date_hierarchy = 'created_at'
+
+@admin.register(MessageAttachment)
+class MessageAttachmentAdmin(admin.ModelAdmin):
+    list_display = ['id', 'message', 'file_type', 'created_at']
+    list_filter = ['file_type', 'created_at']
+    search_fields = ['message__content', 'file_type']
+    readonly_fields = ['created_at']
+
+@admin.register(LocationMessage)
+class LocationMessageAdmin(admin.ModelAdmin):
+    list_display = ['id', 'dialog', 'sender', 'latitude', 'longitude', 'created_at']
+    list_filter = ['created_at']
+    search_fields = ['address', 'sender__username']
+    readonly_fields = ['created_at']
+
+@admin.register(VoiceMessage)
+class VoiceMessageAdmin(admin.ModelAdmin):
+    list_display = ['id', 'dialog', 'sender', 'duration', 'created_at']
+    list_filter = ['created_at']
+    search_fields = ['sender__username']
+    readonly_fields = ['created_at']
+
+@admin.register(GroupChat)
+class GroupChatAdmin(admin.ModelAdmin):
+    list_display = ['id', 'name', 'admin', 'get_participants_count', 'created_at']
+    list_filter = ['created_at']
+    search_fields = ['name', 'description', 'admin__username', 'participants__username']
+    readonly_fields = ['created_at']
     
-    def short_text(self, obj):
-        max_length = 50
-        text = obj.text[:max_length]
-        if len(obj.text) > max_length:
-            text += '...'
-        return text
-    short_text.short_description = 'Сообщение'
-    
-    def mark_as_read(self, request, queryset):
-        queryset.update(is_read=True)
-        self.message_user(request, f'Отмечено прочитанными: {queryset.count()}')
-    mark_as_read.short_description = 'Отметить как прочитанные'
-    
-    def mark_as_unread(self, request, queryset):
-        queryset.update(is_read=False)
-        self.message_user(request, f'Отмечено непрочитанными: {queryset.count()}')
-    mark_as_unread.short_description = 'Отметить как непрочитанные'
-    
-    def has_add_permission(self, request):
-        return False
-    
-    def has_change_permission(self, request, obj=None):
-        return False 
+    def get_participants_count(self, obj):
+        return obj.participants.count()
+    get_participants_count.short_description = 'Количество участников' 

@@ -4,6 +4,10 @@ from django.utils.translation import gettext_lazy as _
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils.text import slugify
 from unidecode import unidecode
+from django.contrib.auth import get_user_model
+from django.utils import timezone
+
+User = get_user_model()
 
 class AnnouncementCategory(models.Model):
     name = models.CharField(_('Название'), max_length=100)
@@ -58,7 +62,7 @@ class Announcement(models.Model):
     status = models.CharField(_('Статус'), max_length=20, choices=STATUS_CHOICES, default=STATUS_MODERATION)
     
     # Связи
-    author = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name=_('Автор'),
+    author = models.ForeignKey(User, verbose_name=_('Автор'),
                              on_delete=models.CASCADE, related_name='announcements')
     
     # Метаданные
@@ -172,16 +176,84 @@ class LostFoundAnnouncement(models.Model):
         (TYPE_FOUND, _('Найдено')),
     ]
 
+    # Связь с основным объявлением
     announcement = models.OneToOneField(Announcement, verbose_name=_('Объявление'),
                                       on_delete=models.CASCADE, related_name='lost_found_details')
     
-    type = models.CharField(_('Тип'), max_length=10, choices=TYPE_CHOICES)
-    date_lost_found = models.DateField(_('Дата потери/находки'))
-    distinctive_features = models.TextField(_('Отличительные черты'))
+    # Основная информация
+    type = models.CharField(_('Тип'), max_length=10, choices=TYPE_CHOICES, default=TYPE_LOST)
+    date_lost_found = models.DateTimeField(_('Дата и время потери/находки'), default=timezone.now)
+    last_seen_location = models.CharField(_('Место последней встречи'), max_length=255, default='')
+    latitude = models.FloatField(_('Широта'), null=True, blank=True)
+    longitude = models.FloatField(_('Долгота'), null=True, blank=True)
+    
+    # Характеристики животного
+    animal_type = models.CharField(_('Вид животного'), max_length=50, default='unknown')
+    breed = models.CharField(_('Порода'), max_length=100, blank=True)
+    color = models.CharField(_('Основной цвет'), max_length=50, default='unknown')
+    color_pattern = models.CharField(_('Тип окраса'), max_length=50, choices=[
+        ('solid', _('Сплошной')),
+        ('spotted', _('Пятнистый')),
+        ('marble', _('Мраморный')),
+        ('tabby', _('Табби')),
+        ('colorpoint', _('Колорпойнт')),
+        ('tiger', _('Тигровый')),
+        ('gradient', _('Градация')),
+        ('shimmer', _('Шиммер')),
+    ], default='solid')
+    distinctive_features = models.TextField(_('Отличительные черты'), default='')
+    size = models.CharField(_('Размер'), max_length=20, choices=[
+        ('tiny', _('Игрушечный')),
+        ('small', _('Маленький')),
+        ('medium', _('Средний')),
+        ('large', _('Большой')),
+        ('xlarge', _('Очень большой')),
+        ('giant', _('Гигантский')),
+    ], default='medium')
+    
+    # Здоровье и особые приметы
+    health_status = models.CharField(_('Состояние здоровья'), max_length=50, choices=[
+        ('healthy', _('Здоровое')),
+        ('injured', _('Травмировано')),
+        ('sick', _('Болеет')),
+        ('disability', _('Инвалидность')),
+    ], blank=True)
+    has_microchip = models.BooleanField(_('Есть микрочип'), default=False)
+    has_collar = models.BooleanField(_('Есть ошейник'), default=False)
+    has_tag = models.BooleanField(_('Есть жетон'), default=False)
+    
+    # Темперамент
+    temperament = models.CharField(_('Темперамент'), max_length=50, choices=[
+        ('aggressive', _('Агрессивный')),
+        ('wary', _('Настороженный')),
+        ('calm', _('Спокойный')),
+        ('playful', _('Игровой')),
+        ('active', _('Активный')),
+        ('friendly', _('Дружелюбный')),
+        ('independent', _('Самостоятельный')),
+        ('introverted', _('Интровертированный')),
+    ], blank=True)
+    
+    # Контактная информация
+    contact_phone = models.CharField(_('Контактный телефон'), max_length=20, default='+00000000000')
+    contact_email = models.EmailField(_('Контактный email'), blank=True)
+    reward_amount = models.DecimalField(_('Сумма вознаграждения'), max_digits=10, decimal_places=2, null=True, blank=True)
+    
+    # История поиска
+    search_radius = models.IntegerField(_('Радиус поиска (км)'), default=5)
+    search_history = models.JSONField(_('История поиска'), default=dict, blank=True)
+    last_seen_details = models.TextField(_('Подробности последней встречи'), blank=True)
     
     class Meta:
         verbose_name = _('Объявление о потере/находке')
         verbose_name_plural = _('Объявления о потере/находке')
+        indexes = [
+            models.Index(fields=['type', 'date_lost_found']),
+            models.Index(fields=['latitude', 'longitude']),
+        ]
+
+    def __str__(self):
+        return f"{self.get_type_display()} - {self.announcement.title}"
 
 class AnnouncementImage(models.Model):
     announcement = models.ForeignKey(Announcement, verbose_name=_('Объявление'),

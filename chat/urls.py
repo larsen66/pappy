@@ -4,9 +4,20 @@ from . import views
 app_name = 'chat'
 
 urlpatterns = [
-    path('dialogs/', views.dialogs_list, name='dialogs_list'),
-    path('dialogs/<int:dialog_id>/', views.dialog_detail, name='dialog_detail'),
-    path('dialogs/<int:dialog_id>/send/', views.send_message, name='send_message'),
-    path('dialogs/<int:dialog_id>/new/', views.get_new_messages, name='get_new_messages'),
-    path('dialogs/create/<int:product_id>/', views.create_dialog, name='create_dialog'),
+    # Список диалогов
+    path('', views.DialogListView.as_view(), name='dialogs_list'),
+    
+    # Детальная страница диалога
+    path('<int:dialog_id>/', views.DialogDetailView.as_view(), name='dialog_detail'),
+    
+    # Отправка сообщений
+    path('<int:dialog_id>/send/', views.SendMessageView.as_view(), name='send_message'),
+    path('<int:dialog_id>/send-location/', views.SendLocationView.as_view(), name='send_location'),
+    path('<int:dialog_id>/send-voice/', views.SendVoiceMessageView.as_view(), name='send_voice'),
+    
+    # Поиск по сообщениям
+    path('search/', views.MessageSearchView.as_view(), name='message_search'),
+    
+    # Групповые чаты
+    path('group/<int:chat_id>/', views.GroupChatView.as_view(), name='group_chat'),
 ] 

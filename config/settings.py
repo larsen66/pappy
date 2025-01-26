@@ -12,10 +12,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-your-secret-key-here')
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-default-key-for-development')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
+DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
@@ -38,16 +38,16 @@ INSTALLED_APPS = [
     'django_otp.plugins.otp_totp',
     'django_otp.plugins.otp_static',
     'rest_framework',
-    'environ',
+    'channels',
     
     # Local apps
     'login_auth.apps.LoginAuthConfig',
     'catalog.apps.CatalogConfig',
-    'kotopsinder.apps.KotopsinderConfig',
     'chat.apps.ChatConfig',
     'notifications.apps.NotificationsConfig',
     'user_profile.apps.UserProfileConfig',
     'announcements.apps.AnnouncementsConfig',
+    'pets.apps.PetsConfig',
 ]
 
 MIDDLEWARE = [
@@ -81,6 +81,20 @@ TEMPLATES = [
     },
 ]
 
+# Channels
+ASGI_APPLICATION = 'config.routing.application'
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [('127.0.0.1', 6379)],
+        },
+    },
+}
+
+# WebSocket
+WEBSOCKET_URL = '/ws/'
 WSGI_APPLICATION = 'config.wsgi.application'
 
 # Database
@@ -157,10 +171,10 @@ INTERNAL_IPS = [
     "127.0.0.1",
 ]
 
-# Authentication
-LOGIN_URL = 'login_auth:login'
-LOGIN_REDIRECT_URL = 'catalog:home'
-LOGOUT_REDIRECT_URL = 'catalog:home'
+# Login settings
+LOGIN_URL = '/admin/login/'
+LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/'
 
 # Custom User Model
 AUTH_USER_MODEL = 'login_auth.User'

@@ -11,7 +11,7 @@ urlpatterns = [
     path('profile/', include('user_profile.urls', namespace='profile')),
     path('chat/', include('chat.urls')),
     path('notifications/', include('notifications.urls')),
-    path('kotopsinder/', include('kotopsinder.urls')),
+    path('pets/', include('pets.urls')),
 ]
 
 if settings.DEBUG:
