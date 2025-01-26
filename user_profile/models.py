@@ -4,6 +4,8 @@ from django.contrib.auth.models import User
 from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from django.contrib.auth import get_user_model
+from django.utils.functional import SimpleLazyObject
 
 class UserProfile(models.Model):
     user = models.OneToOneField(
@@ -171,8 +173,13 @@ class VerificationDocument(models.Model):
         self.status = 'approved'
         self.save()
         if self.document_type == 'passport':
-            self.user.is_verified = True
-            self.user.save()
+            # Получаем актуальный объект пользователя из базы данных
+            user = self.user
+            if isinstance(user, SimpleLazyObject):
+                User = get_user_model()
+                user = User.objects.get(pk=self.user.pk)
+            user.is_verified = True
+            user.save()
 
     def reject(self, reason):
         """Отклонить документ"""
