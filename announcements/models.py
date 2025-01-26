@@ -4,6 +4,8 @@ from django.utils.translation import gettext_lazy as _
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils.text import slugify
 from unidecode import unidecode
+from django.contrib.gis.db.models.fields import PointField
+from django.contrib.postgres.fields import ArrayField
 
 class AnnouncementCategory(models.Model):
     name = models.CharField(_('Название'), max_length=100)
@@ -172,16 +174,86 @@ class LostFoundAnnouncement(models.Model):
         (TYPE_FOUND, _('Найдено')),
     ]
 
-    announcement = models.OneToOneField(Announcement, verbose_name=_('Объявление'),
-                                      on_delete=models.CASCADE, related_name='lost_found_details')
+    ANIMAL_TYPE_CHOICES = [
+        ('dog', _('Собака')),
+        ('cat', _('Кошка')),
+        ('bird', _('Птица')),
+        ('rodent', _('Грызун')),
+        ('reptile', _('Рептилия')),
+        ('fish', _('Рыба')),
+        ('exotic', _('Экзотическое животное')),
+    ]
+
+    SIZE_CHOICES = [
+        ('tiny', _('Очень маленький')),
+        ('small', _('Маленький')),
+        ('medium', _('Средний')),
+        ('large', _('Большой')),
+        ('very_large', _('Очень большой')),
+    ]
+
+    announcement = models.OneToOneField(
+        Announcement, 
+        verbose_name=_('Объявление'),
+        on_delete=models.CASCADE, 
+        related_name='lost_found_details'
+    )
     
     type = models.CharField(_('Тип'), max_length=10, choices=TYPE_CHOICES)
-    date_lost_found = models.DateField(_('Дата потери/находки'))
+    animal_type = models.CharField(_('Вид животного'), max_length=20, choices=ANIMAL_TYPE_CHOICES)
+    breed = models.CharField(_('Порода'), max_length=100, blank=True)
+    color = models.CharField(_('Основной цвет'), max_length=50)
+    size = models.CharField(_('Размер'), max_length=20, choices=SIZE_CHOICES)
     distinctive_features = models.TextField(_('Отличительные черты'))
+    
+    # Location fields with PostGIS support
+    date_lost_found = models.DateTimeField(_('Дата и время пропажи/находки'))
+    location = models.CharField(_('Место пропажи/находки'), max_length=255)
+    latitude = models.DecimalField(_('Широта'), max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(_('Долгота'), max_digits=9, decimal_places=6, null=True, blank=True)
+    location_point = models.PointField(_('Координаты'), null=True, blank=True, srid=4326)
+    
+    # Contact information
+    contact_phone = models.CharField(_('Контактный телефон'), max_length=20)
+    contact_email = models.EmailField(_('Контактный email'), blank=True)
+    reward_amount = models.DecimalField(
+        _('Сумма вознаграждения'), 
+        max_digits=10, 
+        decimal_places=2, 
+        null=True, 
+        blank=True
+    )
+    
+    # Additional features using PostgreSQL arrays and JSONB
+    color_pattern = models.CharField(_('Тип окраса'), max_length=50, blank=True)
+    microchipped = models.BooleanField(_('Есть микрочип'), default=False)
+    collar_details = models.CharField(_('Детали ошейника'), max_length=255, blank=True)
+    special_marks = models.JSONField(_('Особые приметы'), null=True, blank=True)
+    
+    # Search history tracking
+    search_history = models.JSONField(_('История поиска'), null=True, blank=True)
+    search_areas = models.JSONField(_('Зоны поиска'), null=True, blank=True)
+    contacted_users = ArrayField(
+        models.IntegerField(),
+        verbose_name=_('Контакты с пользователями'),
+        null=True,
+        blank=True
+    )
     
     class Meta:
         verbose_name = _('Объявление о потере/находке')
         verbose_name_plural = _('Объявления о потере/находке')
+        indexes = [
+            models.Index(fields=['type', 'animal_type']),
+            models.Index(fields=['date_lost_found']),
+            models.Index(fields=['location']),
+        ]
+        
+    def save(self, *args, **kwargs):
+        # Update location_point if lat/lon provided
+        if self.latitude and self.longitude and not self.location_point:
+            self.location_point = Point(float(self.longitude), float(self.latitude))
+        super().save(*args, **kwargs)
 
 class AnnouncementImage(models.Model):
     announcement = models.ForeignKey(Announcement, verbose_name=_('Объявление'),
