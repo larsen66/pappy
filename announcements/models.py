@@ -207,7 +207,7 @@ class LostFoundAnnouncement(models.Model):
     
     # Location fields
     date_lost_found = models.DateTimeField(_('Дата и время пропажи/находки'))
-    location = models.CharField(_('Место пропажи/находки'), max_length=255)
+    location = models.CharField(_('Место пропажи/находки'), max_length=255, null=True, blank=True, default='')
     latitude = models.DecimalField(_('Широта'), max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(_('Долгота'), max_digits=9, decimal_places=6, null=True, blank=True)
     

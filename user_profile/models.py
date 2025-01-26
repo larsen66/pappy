@@ -107,7 +107,12 @@ class SpecialistProfile(models.Model):
     experience_years = models.PositiveIntegerField(_('Опыт работы (лет)'))
     services = models.TextField(_('Услуги'))
     price_range = models.CharField(_('Ценовой диапазон'), max_length=100)
-    certificates = models.JSONField(_('Сертификаты'), null=True, blank=True)
+    certificates = models.FileField(
+        _('Сертификаты'),
+        upload_to='certificates/',
+        null=True,
+        blank=True
+    )
     is_verified = models.BooleanField(_('Верифицирован'), default=False)
     rating = models.DecimalField(
         _('Рейтинг'),

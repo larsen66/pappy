@@ -4,7 +4,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from PIL import Image
 import io
 
-from user_profile.forms import SellerProfileForm, SpecialistProfileForm
+from user_profile.forms import UserProfileForm, SellerProfileForm, SpecialistProfileForm
 from ..models import UserProfile, SellerProfile, SpecialistProfile
 
 User = get_user_model()
@@ -15,7 +15,7 @@ class UserProfileFormTests(TestCase):
             phone='+79991234567',
             password='testpass123'
         )
-        self.profile = self.user.profile
+        self.profile = self.user.userprofile
 
     def test_valid_profile_form(self):
         """Тест валидной формы профиля"""
@@ -129,10 +129,8 @@ class SpecialistProfileFormTests(TestCase):
         form_data = {
             'specialization': 'veterinarian',
             'experience_years': 5,
-            'services': 'Test services'
+            'services': 'Test services',
+            'price_range': '1000-5000'
         }
-        file_data = {
-            'certificates': test_image
-        }
-        form = SpecialistProfileForm(data=form_data, files=file_data)
-        self.assertTrue(form.is_valid()) 
+        form = SpecialistProfileForm(data=form_data, files={'certificates': test_image})
+        self.assertTrue(form.is_valid(), form.errors) 
