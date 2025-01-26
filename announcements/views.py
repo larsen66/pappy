@@ -15,15 +15,13 @@ from .models import (
     LostFoundAnnouncement,
     AnnouncementImage
 )
-from .forms import (
-    AnnouncementForm,
-    AnimalAnnouncementForm,
-    ServiceAnnouncementForm,
-    MatingAnnouncementForm,
-    LostFoundAnnouncementForm,
-    AnnouncementImageForm,
-    AnnouncementSearchForm
-)
+from .forms import AnimalAnnouncementForm, ServiceAnnouncementForm, MatingAnnouncementForm, LostFoundAnnouncementForm, LostPetAnnouncementForm
+from django.views.generic.edit import CreateView
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.urls import reverse_lazy
+from .services import NotificationService
+from django.conf import settings
+
 
 def announcement_list(request):
     announcements = Announcement.objects.filter(status=Announcement.STATUS_ACTIVE)
@@ -233,3 +231,145 @@ def create_service_announcement(request):
         'form': form,
         'title': _('Создание объявления об услуге')
     })
+
+@login_required
+def create_announcement(request):
+    if request.method == 'POST':
+        announcement_type = request.POST.get('type')
+        base_form = BaseAnnouncementForm(request.POST)
+        
+        if announcement_type == Announcement.TYPE_ANIMAL:
+            details_form = AnimalAnnouncementForm(request.POST)
+        elif announcement_type == Announcement.TYPE_SERVICE:
+            details_form = ServiceAnnouncementForm(request.POST)
+        elif announcement_type == Announcement.TYPE_MATING:
+            details_form = MatingAnnouncementForm(request.POST)
+        elif announcement_type == Announcement.TYPE_LOST_FOUND:
+            details_form = LostFoundAnnouncementForm(request.POST)
+        else:
+            messages.error(request, _('Неверный тип объявления'))
+            return redirect('announcements:create')
+
+        if base_form.is_valid() and details_form.is_valid():
+            with transaction.atomic():
+                # Сохраняем основное объявление
+                announcement = base_form.save(commit=False)
+                announcement.author = request.user
+                announcement.status = Announcement.STATUS_MODERATION
+                announcement.save()
+
+                # Сохраняем детали объявления
+                details = details_form.save(commit=False)
+                details.announcement = announcement
+                details.save()
+
+            messages.success(request, _('Объявление успешно создано'))
+            return redirect('announcements:detail', pk=announcement.pk)
+    else:
+        base_form = BaseAnnouncementForm()
+        details_form = None  # Форма деталей будет выбрана на основе выбранного типа через JavaScript
+    
+    return render(request, 'announcements/announcement_form.html', {
+        'base_form': base_form,
+        'details_form': details_form,
+        'announcement_types': Announcement.ANNOUNCEMENT_TYPE_CHOICES,
+        'title': _('Создание объявления')
+    })
+
+@login_required
+def announcement_edit(request, pk):
+    """Edit an existing announcement"""
+    # Получаем основное объявление
+    announcement = get_object_or_404(Announcement, pk=pk, author=request.user)
+    
+    if request.method == 'POST':
+        # Форма для основного объявления
+        base_form = BaseAnnouncementForm(request.POST, instance=announcement)
+        
+        # Выбираем соответствующую форму для деталей
+        if announcement.type == Announcement.TYPE_ANIMAL:
+            details_form = AnimalAnnouncementForm(request.POST, instance=announcement.animal_details)
+        elif announcement.type == Announcement.TYPE_SERVICE:
+            details_form = ServiceAnnouncementForm(request.POST, instance=announcement.service_details)
+        elif announcement.type == Announcement.TYPE_MATING:
+            details_form = MatingAnnouncementForm(request.POST, instance=announcement.mating_details)
+        elif announcement.type == Announcement.TYPE_LOST_FOUND:
+            details_form = LostFoundAnnouncementForm(request.POST, instance=announcement.lost_found_details)
+        
+        if base_form.is_valid() and details_form.is_valid():
+            with transaction.atomic():
+                # Сохраняем основное объявление
+                announcement = base_form.save()
+                
+                # Сохраняем детали
+                details = details_form.save(commit=False)
+                details.announcement = announcement
+                details.save()
+                
+            messages.success(request, _('Объявление успешно обновлено'))
+            return redirect('announcements:detail', pk=announcement.pk)
+        else:
+            messages.error(request, _('Пожалуйста, исправьте ошибки в форме'))
+    else:
+        # Заполняем формы текущими данными
+        base_form = BaseAnnouncementForm(instance=announcement)
+        
+        # Получаем соответствующую форму для деталей
+        if announcement.type == Announcement.TYPE_ANIMAL:
+            details_form = AnimalAnnouncementForm(instance=announcement.animal_details)
+        elif announcement.type == Announcement.TYPE_SERVICE:
+            details_form = ServiceAnnouncementForm(instance=announcement.service_details)
+        elif announcement.type == Announcement.TYPE_MATING:
+            details_form = MatingAnnouncementForm(instance=announcement.mating_details)
+        elif announcement.type == Announcement.TYPE_LOST_FOUND:
+            details_form = LostFoundAnnouncementForm(instance=announcement.lost_found_details)
+    
+    return render(request, 'announcements/announcement_form.html', {
+        'base_form': base_form,
+        'details_form': details_form,
+        'announcement': announcement,
+        'title': _('Редактирование объявления'),
+        'is_edit': True
+    })
+
+class CreateLostPetAnnouncementView(LoginRequiredMixin, CreateView):
+    """Представление для создания объявления о пропаже животного"""
+    form_class = LostPetAnnouncementForm
+    template_name = 'announcements/lost_pet_form.html'
+    success_url = reverse_lazy('announcements:lost_pet_list')
+    
+    def form_valid(self, form):
+        """Обработка валидной формы"""
+        # Устанавливаем автора объявления
+        form.instance.author = self.request.user
+        form.instance.status = 'active'  # Сразу активируем объявление
+        
+        response = super().form_valid(form)
+        
+        # Обрабатываем загруженные фотографии
+        photos = self.request.FILES.getlist('pet_photos')
+        for photo in photos:
+            AnnouncementImage.objects.create(
+                announcement=self.object,
+                image=photo
+            )
+        
+        # Отправляем уведомления пользователям в радиусе
+        NotificationService.notify_users_in_radius(
+            announcement=self.object,
+            radius_km=form.cleaned_data['notification_radius']
+        )
+        
+        messages.success(
+            self.request,
+            _('Объявление создано. Уведомления отправлены пользователям в указанном радиусе.')
+        )
+        
+        return response
+    
+    def get_context_data(self, **kwargs):
+        """Добавляем дополнительные данные в контекст"""
+        context = super().get_context_data(**kwargs)
+        context['google_maps_api_key'] = settings.GOOGLE_MAPS_API_KEY
+        context['title'] = _('Создание объявления о пропаже')
+        return context
