@@ -69,7 +69,7 @@ class Announcement(models.Model):
     is_premium = models.BooleanField(_('Премиум'), default=False)
     
     # Геолокация
-    location = models.CharField(_('Местоположение'), max_length=200)
+    location = models.CharField(_('Местоположение'), max_length=200, null=True, blank=True)
     latitude = models.DecimalField(_('широта'), max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(_('долгота'), max_digits=9, decimal_places=6, null=True, blank=True)
     

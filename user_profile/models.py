@@ -17,6 +17,20 @@ class UserProfile(models.Model):
     avatar = models.ImageField(_('Аватар'), upload_to='avatars/', null=True, blank=True)
     bio = models.TextField(_('О себе'), blank=True)
     location = models.CharField(_('Местоположение'), max_length=200, blank=True)
+    last_latitude = models.DecimalField(
+        _('Последняя известная широта'),
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True
+    )
+    last_longitude = models.DecimalField(
+        _('Последняя известная долгота'),
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True
+    )
     is_onboarded = models.BooleanField(_('Прошел онбординг'), default=False)
     created_at = models.DateTimeField(_('Дата создания'), auto_now_add=True)
     updated_at = models.DateTimeField(_('Дата обновления'), auto_now=True)
@@ -24,6 +38,9 @@ class UserProfile(models.Model):
     class Meta:
         verbose_name = _('Профиль пользователя')
         verbose_name_plural = _('Профили пользователей')
+        indexes = [
+            models.Index(fields=['last_latitude', 'last_longitude']),
+        ]
 
     def __str__(self):
         return f'Профиль пользователя {self.user.phone}'

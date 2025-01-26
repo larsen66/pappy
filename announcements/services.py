@@ -1,7 +1,5 @@
-from django.contrib.gis.geos import Point
-from django.contrib.gis.measure import D
-from django.contrib.gis.db.models.functions import Distance
-from django.db.models import Q
+from math import sin, cos, sqrt, atan2, radians
+from django.db.models import Q, F
 from django.utils import timezone
 from datetime import timedelta
 from .models import LostFoundAnnouncement, Announcement
@@ -11,7 +9,28 @@ from django.db import transaction
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from notifications.models import Notification
-from users.models import User
+from user_profile.models import UserProfile
+import logging
+
+logger = logging.getLogger(__name__)
+
+def calculate_distance(lat1, lon1, lat2, lon2):
+    """Вычисляет расстояние между двумя точками в километрах"""
+    if not all([lat1, lon1, lat2, lon2]):
+        return float('inf')
+        
+    R = 6371  # Радиус Земли в километрах
+    
+    lat1, lon1, lat2, lon2 = map(radians, [float(lat1), float(lon1), float(lat2), float(lon2)])
+    
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    
+    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+    c = 2 * atan2(sqrt(a), sqrt(1-a))
+    distance = R * c
+    
+    return distance
 
 class AreaNotificationService:
     """Сервис для отправки уведомлений в радиусе"""
@@ -21,15 +40,24 @@ class AreaNotificationService:
         if not announcement.latitude or not announcement.longitude:
             return []
             
-        center_point = Point(announcement.longitude, announcement.latitude)
         radius_km = announcement.search_radius or 5
         
         # Находим пользователей в радиусе
-        nearby_users = User.objects.filter(
-            last_location__distance_lte=(center_point, D(km=radius_km))
-        ).annotate(
-            distance=Distance('last_location', center_point)
-        ).order_by('distance')
+        nearby_users = []
+        for profile in UserProfile.objects.select_related('user').filter(
+            last_latitude__isnull=False, 
+            last_longitude__isnull=False
+        ):
+            distance = calculate_distance(
+                announcement.latitude, announcement.longitude,
+                profile.last_latitude, profile.last_longitude
+            )
+            if distance <= radius_km:
+                profile.user.distance = distance
+                nearby_users.append(profile.user)
+        
+        # Сортируем по расстоянию
+        nearby_users.sort(key=lambda u: u.distance)
         
         # Отправляем уведомления
         for user in nearby_users:
@@ -89,18 +117,6 @@ class LostPetMatchingService:
             )
         )
         
-        if announcement.latitude and announcement.longitude:
-            # Если есть координаты, учитываем расстояние
-            center_point = Point(announcement.longitude, announcement.latitude)
-            matches = matches.filter(
-                latitude__isnull=False,
-                longitude__isnull=False
-            ).annotate(
-                distance=Distance('location', center_point)
-            ).filter(
-                distance__lte=D(km=10)  # В радиусе 10 км
-            )
-        
         # Считаем релевантность для каждого совпадения
         scored_matches = []
         for match in matches:
@@ -132,7 +148,7 @@ class LostPetMatchingService:
         # Геолокация (30% веса)
         if announcement1.latitude and announcement1.longitude and \
            announcement2.latitude and announcement2.longitude:
-            distance = self._calculate_distance(
+            distance = calculate_distance(
                 announcement1.latitude, announcement1.longitude,
                 announcement2.latitude, announcement2.longitude
             )
@@ -170,7 +186,7 @@ class LostPetMatchingService:
         # Проверяем расстояние
         if announcement1.latitude and announcement1.longitude and \
            announcement2.latitude and announcement2.longitude:
-            distance = self._calculate_distance(
+            distance = calculate_distance(
                 announcement1.latitude, announcement1.longitude,
                 announcement2.latitude, announcement2.longitude
             )
@@ -181,23 +197,6 @@ class LostPetMatchingService:
         reasons.append(_(f'Разница во времени: {time_diff.days} дней'))
         
         return reasons
-        
-    def _calculate_distance(self, lat1, lon1, lat2, lon2):
-        """Вычисляет расстояние между двумя точками в километрах"""
-        from math import sin, cos, sqrt, atan2, radians
-        
-        R = 6371  # Радиус Земли в километрах
-        
-        lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
-        
-        dlat = lat2 - lat1
-        dlon = lon2 - lon1
-        
-        a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
-        c = 2 * atan2(sqrt(a), sqrt(1-a))
-        distance = R * c
-        
-        return distance 
 
 
 class LostPetSuggestionService:
@@ -282,54 +281,43 @@ class LostPetSuggestionService:
         if not announcement.latitude or not announcement.longitude:
             return []
             
-        center_point = Point(announcement.longitude, announcement.latitude)
-        radius_km = 5  # Радиус поиска учреждений
-        
-        # Находим ветклиники
-        vet_clinics = ServiceAnnouncement.objects.filter(
-            service_type='veterinary',
-            announcement__status='active',
-            location__distance_lte=(center_point, D(km=radius_km))
-        ).annotate(
-            distance=Distance('location', center_point)
-        ).order_by('distance')[:5]
-        
         # Находим приюты
-        shelters = User.objects.filter(
-            is_shelter=True,
-            is_active=True,
-            last_location__distance_lte=(center_point, D(km=radius_km))
-        ).annotate(
-            distance=Distance('last_location', center_point)
-        ).order_by('distance')[:5]
+        shelters = []
+        for profile in UserProfile.objects.select_related('user').filter(
+            user__is_shelter=True,
+            user__is_active=True,
+            last_latitude__isnull=False,
+            last_longitude__isnull=False
+        ):
+            distance = calculate_distance(
+                announcement.latitude, announcement.longitude,
+                profile.last_latitude, profile.last_longitude
+            )
+            if distance <= 5:  # В радиусе 5 км
+                profile.distance = distance
+                shelters.append(profile)
+        
+        # Сортируем по расстоянию
+        shelters.sort(key=lambda p: p.distance)
+        shelters = shelters[:5]  # Берем только первые 5
         
         facilities = []
-        
-        # Добавляем ветклиники
-        for clinic in vet_clinics:
-            facilities.append({
-                'type': 'vet_clinic',
-                'title': clinic.announcement.title,
-                'address': clinic.announcement.location,
-                'phone': clinic.announcement.contact_phone,
-                'distance': round(clinic.distance.km, 1)
-            })
             
         # Добавляем приюты
-        for shelter in shelters:
+        for profile in shelters:
             facilities.append({
                 'type': 'shelter',
-                'title': shelter.profile.organization_name,
-                'address': shelter.profile.address,
-                'phone': shelter.phone,
-                'distance': round(shelter.distance.km, 1)
+                'title': profile.organization_name,
+                'address': profile.address,
+                'phone': profile.user.phone,
+                'distance': round(profile.distance, 1)
             })
             
         return [{
             'category': 'nearby_facilities',
             'title': _('Ближайшие учреждения'),
             'items': facilities
-        }] if facilities else [] 
+        }] if facilities else []
 
 
 class SearchHistoryService:
