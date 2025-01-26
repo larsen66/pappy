@@ -1,166 +1,157 @@
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.contrib.auth import get_user_model
-from django.core.files.uploadedfile import SimpleUploadedFile
-from .models import Dialog, Message, MessageAttachment, LocationMessage, VoiceMessage, GroupChat
+from catalog.models import Product, Category
+from .models import Dialog, Message
 from decimal import Decimal
-import json
-
-User = get_user_model()
 
 class ChatTests(TestCase):
     def setUp(self):
         self.client = Client()
-        # Create test users
-        self.user1 = User.objects.create(phone='+79991234567')
-        self.user2 = User.objects.create(phone='+79991234568')
-        self.user3 = User.objects.create(phone='+79991234569')
+        self.User = get_user_model()
+        self.user = self.User.objects.create(phone='+79991234567')
+        self.seller = self.User.objects.create(phone='+79991234568')
+        self.other_user = self.User.objects.create(phone='+79991234569')
+        self.client.force_login(self.user)
         
-        # Create test dialog
-        self.dialog = Dialog.objects.create()
-        self.dialog.participants.add(self.user1, self.user2)
-        
-        # Create test group chat
-        self.group_chat = GroupChat.objects.create(
-            name='Test Group',
-            admin=self.user1,
-            description='Test group chat'
+        # Создаем тестовую категорию и продукт
+        self.category = Category.objects.create(
+            name='Тестовая категория',
+            slug='test-category'
         )
-        self.group_chat.participants.add(self.user1, self.user2, self.user3)
+        self.product = Product.objects.create(
+            seller=self.seller,
+            category=self.category,
+            title='Тестовый продукт',
+            slug='test-product',
+            description='Описание тестового продукта',
+            price=Decimal('1000.00'),
+            condition='new'
+        )
         
-        # Login as user1
-        self.client.force_login(self.user1)
-
-    def test_dialog_creation(self):
-        """Test dialog creation between two users"""
-        response = self.client.post(reverse('chat:create_dialog'), {
-            'participant_id': self.user3.id
-        })
-        self.assertEqual(response.status_code, 201)
-        dialog = Dialog.objects.latest('id')
-        self.assertIn(self.user1, dialog.participants.all())
-        self.assertIn(self.user3, dialog.participants.all())
-
-    def test_message_sending(self):
-        """Test sending text messages in dialog"""
-        response = self.client.post(reverse('chat:send_message', args=[self.dialog.id]), {
-            'content': 'Test message'
-        })
-        self.assertEqual(response.status_code, 201)
-        message = Message.objects.latest('id')
-        self.assertEqual(message.content, 'Test message')
-        self.assertEqual(message.sender, self.user1)
-        self.assertEqual(message.dialog, self.dialog)
-
-    def test_file_attachment(self):
-        """Test sending messages with file attachments"""
-        file_content = b'Test file content'
-        test_file = SimpleUploadedFile('test.txt', file_content)
-        response = self.client.post(reverse('chat:send_message', args=[self.dialog.id]), {
-            'content': 'Message with attachment',
-            'attachment': test_file
-        })
-        self.assertEqual(response.status_code, 201)
-        attachment = MessageAttachment.objects.latest('id')
-        self.assertEqual(attachment.message.content, 'Message with attachment')
-        self.assertTrue(attachment.file.name.endswith('test.txt'))
-
-    def test_location_message(self):
-        """Test sending location messages"""
-        location_data = {
-            'latitude': 55.7558,
-            'longitude': 37.6173,
-            'address': 'Test Address'
-        }
-        response = self.client.post(reverse('chat:send_location', args=[self.dialog.id]), 
-                                  location_data)
-        self.assertEqual(response.status_code, 201)
-        location = LocationMessage.objects.latest('id')
-        self.assertEqual(float(location.latitude), location_data['latitude'])
-        self.assertEqual(float(location.longitude), location_data['longitude'])
-        self.assertEqual(location.address, location_data['address'])
-
+        # Создаем диалог
+        self.dialog = Dialog.objects.create(product=self.product)
+        self.dialog.participants.add(self.user, self.seller)
+        
+    def test_dialogs_list(self):
+        response = self.client.get(reverse('chat:dialogs_list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'chat/dialogs_list.html')
+        
+    def test_dialog_detail(self):
+        response = self.client.get(
+            reverse('chat:dialog_detail', kwargs={'dialog_id': self.dialog.id})
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'chat/dialog_detail.html')
+        
+    def test_send_message(self):
+        # Отправляем сообщение
+        response = self.client.post(
+            reverse('chat:send_message', kwargs={'dialog_id': self.dialog.id}),
+            {'text': 'Тестовое сообщение'}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            Message.objects.filter(
+                dialog=self.dialog,
+                sender=self.user,
+                text='Тестовое сообщение'
+            ).exists()
+        )
+        
+    def test_create_dialog(self):
+        # Удаляем существующий диалог для чистоты теста
+        self.dialog.delete()
+        
+        # Создаем новый диалог
+        response = self.client.post(
+            reverse('chat:create_dialog', kwargs={'product_id': self.product.id})
+        )
+        self.assertEqual(response.status_code, 302)  # Редирект после создания
+        
+        # Проверяем, что диалог создан
+        dialog = Dialog.objects.filter(product=self.product).first()
+        self.assertIsNotNone(dialog)
+        self.assertIn(self.user, dialog.participants.all())
+        self.assertIn(self.seller, dialog.participants.all())
+    
+    def test_dialog_access_permissions(self):
+        # Логинимся под другим пользователем
+        self.client.force_login(self.other_user)
+        
+        # Пытаемся получить доступ к диалогу
+        response = self.client.get(
+            reverse('chat:dialog_detail', kwargs={'dialog_id': self.dialog.id})
+        )
+        self.assertEqual(response.status_code, 403)  # Доступ запрещен
+        
+        # Пытаемся отправить сообщение
+        response = self.client.post(
+            reverse('chat:send_message', kwargs={'dialog_id': self.dialog.id}),
+            {'text': 'Тестовое сообщение'}
+        )
+        self.assertEqual(response.status_code, 403)
+    
     def test_message_read_status(self):
-        """Test message read status functionality"""
-        # Send message as user2
-        self.client.force_login(self.user2)
-        response = self.client.post(reverse('chat:send_message', args=[self.dialog.id]), {
-            'content': 'Test unread message'
-        })
-        message_id = json.loads(response.content)['id']
+        # Отправляем сообщение от продавца
+        self.client.force_login(self.seller)
+        response = self.client.post(
+            reverse('chat:send_message', kwargs={'dialog_id': self.dialog.id}),
+            {'text': 'Сообщение от продавца'}
+        )
+        self.assertEqual(response.status_code, 200)
         
-        # Check message is unread
-        message = Message.objects.get(id=message_id)
+        # Проверяем, что сообщение не прочитано
+        message = Message.objects.latest('created')
         self.assertFalse(message.is_read)
         
-        # Read message as user1
-        self.client.force_login(self.user1)
-        response = self.client.post(reverse('chat:mark_read', args=[message_id]))
-        self.assertEqual(response.status_code, 200)
+        # Читаем сообщение другим пользователем
+        self.client.force_login(self.user)
+        response = self.client.get(
+            reverse('chat:dialog_detail', kwargs={'dialog_id': self.dialog.id})
+        )
         
-        # Verify message is now read
+        # Проверяем, что сообщение помечено как прочитанное
         message.refresh_from_db()
         self.assertTrue(message.is_read)
-
-    def test_group_chat_functionality(self):
-        """Test group chat functionality"""
-        # Send message to group
-        response = self.client.post(reverse('chat:send_group_message', args=[self.group_chat.id]), {
-            'content': 'Test group message'
-        })
-        self.assertEqual(response.status_code, 201)
+    
+    def test_messages_ordering(self):
+        # Создаем несколько сообщений
+        messages = [
+            Message.objects.create(
+                dialog=self.dialog,
+                sender=self.user,
+                text=f'Сообщение {i}'
+            ) for i in range(3)
+        ]
         
-        # Add new participant
-        response = self.client.post(reverse('chat:add_participant', args=[self.group_chat.id]), {
-            'user_id': self.user3.id
-        })
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(self.user3, self.group_chat.participants.all())
+        # Проверяем порядок сообщений в диалоге
+        response = self.client.get(
+            reverse('chat:dialog_detail', kwargs={'dialog_id': self.dialog.id})
+        )
         
-        # Remove participant
-        response = self.client.post(reverse('chat:remove_participant', args=[self.group_chat.id]), {
-            'user_id': self.user3.id
-        })
-        self.assertEqual(response.status_code, 200)
-        self.assertNotIn(self.user3, self.group_chat.participants.all())
-
-    def test_message_search(self):
-        """Test message search functionality"""
-        # Create test messages
-        Message.objects.create(dialog=self.dialog, sender=self.user1, content='Test search message 1')
-        Message.objects.create(dialog=self.dialog, sender=self.user2, content='Test search message 2')
-        Message.objects.create(dialog=self.dialog, sender=self.user1, content='Different content')
+        dialog_messages = response.context['messages']
+        self.assertEqual(list(dialog_messages), messages)
+    
+    def test_dialog_creation_restrictions(self):
+        # Пытаемся создать второй диалог для того же продукта
+        response = self.client.post(
+            reverse('chat:create_dialog', kwargs={'product_id': self.product.id})
+        )
+        self.assertEqual(response.status_code, 400)  # Ошибка - диалог уже существует
         
-        response = self.client.get(reverse('chat:message_search'), {'q': 'search message'})
-        self.assertEqual(response.status_code, 200)
-        results = json.loads(response.content)
-        self.assertEqual(len(results['messages']), 2)
-
-    def test_dialog_permissions(self):
-        """Test dialog access permissions"""
-        # Try to access dialog as non-participant
-        self.client.force_login(self.user3)
-        response = self.client.get(reverse('chat:dialog_detail', args=[self.dialog.id]))
-        self.assertEqual(response.status_code, 403)
-        
-        # Try to send message as non-participant
-        response = self.client.post(reverse('chat:send_message', args=[self.dialog.id]), {
-            'content': 'Unauthorized message'
-        })
-        self.assertEqual(response.status_code, 403)
-
-    def test_group_chat_permissions(self):
-        """Test group chat permissions"""
-        # Create new user who is not in the group
-        new_user = User.objects.create(phone='+79991234570')
-        self.client.force_login(new_user)
-        
-        # Try to access group chat
-        response = self.client.get(reverse('chat:group_chat_detail', args=[self.group_chat.id]))
-        self.assertEqual(response.status_code, 403)
-        
-        # Try to send message to group
-        response = self.client.post(reverse('chat:send_group_message', args=[self.group_chat.id]), {
-            'content': 'Unauthorized group message'
-        })
-        self.assertEqual(response.status_code, 403)
+        # Пытаемся создать диалог для своего продукта
+        product = Product.objects.create(
+            seller=self.user,
+            category=self.category,
+            title='Мой продукт',
+            slug='my-product',
+            description='Описание моего продукта',
+            price=Decimal('1000.00'),
+            condition='new'
+        )
+        response = self.client.post(
+            reverse('chat:create_dialog', kwargs={'product_id': product.id})
+        )
+        self.assertEqual(response.status_code, 400)  # Ошибка - нельзя создать диалог с самим собой 

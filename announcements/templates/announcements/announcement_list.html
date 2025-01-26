@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load crispy_forms_tags %}
+
+{% block title %}{% trans "Объявления" %}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">{% trans "Фильтры" %}</h5>
+                    <form method="get">
+                        {{ form|crispy }}
+                        <button type="submit" class="btn btn-primary">{% trans "Применить" %}</button>
+                        <a href="{% url 'announcements:list' %}" class="btn btn-secondary">{% trans "Сбросить" %}</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-9">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>{% trans "Объявления" %}</h2>
+                <div>
+                    <a href="{% url 'announcements:create_animal' %}" class="btn btn-primary">{% trans "Разместить объявление о животном" %}</a>
+                    <a href="{% url 'announcements:create_service' %}" class="btn btn-primary">{% trans "Разместить объявление об услуге" %}</a>
+                </div>
+            </div>
+            <div class="row">
+                {% for announcement in announcements %}
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100">
+                        {% if announcement.images.exists %}
+                        <img src="{{ announcement.images.first.image.url }}" class="card-img-top" alt="{{ announcement.title }}">
+                        {% endif %}
+                        <div class="card-body">
+                            <h5 class="card-title">{{ announcement.title }}</h5>
+                            <p class="card-text">{{ announcement.description|truncatewords:20 }}</p>
+                            <p class="card-text">
+                                <small class="text-muted">
+                                    {{ announcement.get_type_display }} • {{ announcement.location }}
+                                </small>
+                            </p>
+                            {% if announcement.price %}
+                            <p class="card-text">
+                                <strong>{% trans "Цена:" %}</strong> {{ announcement.price }} ₽
+                            </p>
+                            {% endif %}
+                            <a href="{% url 'announcements:detail' pk=announcement.pk %}" class="btn btn-primary">{% trans "Подробнее" %}</a>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-12">
+                    <div class="alert alert-info">
+                        {% trans "Объявления не найдены" %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% if announcements.has_other_pages %}
+            <nav aria-label="Page navigation" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if announcements.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ announcements.previous_page_number }}">{% trans "Назад" %}</a>
+                    </li>
+                    {% endif %}
+                    {% for i in announcements.paginator.page_range %}
+                    <li class="page-item {% if announcements.number == i %}active{% endif %}">
+                        <a class="page-link" href="?page={{ i }}">{{ i }}</a>
+                    </li>
+                    {% endfor %}
+                    {% if announcements.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ announcements.next_page_number }}">{% trans "Вперед" %}</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %} 

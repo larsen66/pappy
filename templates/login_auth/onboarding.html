@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Добро пожаловать | Паппи{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <h2 class="mb-4">Добро пожаловать в Паппи!</h2>
+            <p class="lead mb-5">Выберите, как вы хотите использовать нашу платформу</p>
+            
+            <div class="row">
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h3 class="card-title">Я хочу стать продавцом</h3>
+                            <p class="card-text">Размещайте объявления о продаже животных и получайте заявки от покупателей</p>
+                            <a href="{% url 'login_auth:become_seller' %}" class="btn btn-primary">Стать продавцом</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h3 class="card-title">Я специалист по уходу</h3>
+                            <p class="card-text">Предлагайте свои услуги по уходу за животными и находите клиентов</p>
+                            <a href="{% url 'login_auth:become_specialist' %}" class="btn btn-primary">Стать специалистом</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-4">
+                <p>Или просто <a href="{% url 'catalog:home' %}">перейти к каталогу</a></p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

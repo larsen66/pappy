@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Модерация объявлений" %}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>{% trans "Объявления на модерации" %}</h2>
+    
+    <div class="row">
+        {% for announcement in announcements %}
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                {% if announcement.images.exists %}
+                <img src="{{ announcement.images.first.image.url }}" class="card-img-top" alt="{{ announcement.title }}">
+                {% endif %}
+                <div class="card-body">
+                    <h5 class="card-title">{{ announcement.title }}</h5>
+                    <p class="card-text">{{ announcement.description|truncatewords:30 }}</p>
+                    <p class="card-text">
+                        <small class="text-muted">
+                            {{ announcement.get_type_display }} • {{ announcement.location }}
+                            <br>
+                            {% trans "Автор:" %} {{ announcement.author }}
+                            <br>
+                            {% trans "Создано:" %} {{ announcement.created_at|date:"d.m.Y H:i" }}
+                        </small>
+                    </p>
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'announcements:detail' pk=announcement.pk %}" class="btn btn-primary">
+                            {% trans "Подробнее" %}
+                        </a>
+                        <a href="{% url 'announcements:moderate' pk=announcement.pk %}" class="btn btn-warning">
+                            {% trans "Модерировать" %}
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info">
+                {% trans "Нет объявлений на модерации" %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if announcements.has_other_pages %}
+    <nav aria-label="Page navigation" class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if announcements.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ announcements.previous_page_number }}">{% trans "Назад" %}</a>
+            </li>
+            {% endif %}
+            {% for i in announcements.paginator.page_range %}
+            <li class="page-item {% if announcements.number == i %}active{% endif %}">
+                <a class="page-link" href="?page={{ i }}">{{ i }}</a>
+            </li>
+            {% endfor %}
+            {% if announcements.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ announcements.next_page_number }}">{% trans "Вперед" %}</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %} 

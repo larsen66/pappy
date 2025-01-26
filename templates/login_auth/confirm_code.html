@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Подтверждение входа | Паппи{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">Подтверждение входа</h4>
+                </div>
+                <div class="card-body">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                    
+                    <p class="mb-3">Введите код подтверждения, отправленный на ваш телефон</p>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        {{ form|crispy }}
+                        <button type="submit" class="btn btn-primary">Подтвердить</button>
+                    </form>
+                    
+                    <div class="mt-3">
+                        <a href="{% url 'login_auth:login' %}">Изменить номер телефона</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

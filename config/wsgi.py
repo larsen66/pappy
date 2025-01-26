@@ -1,5 +1,5 @@
 """
-WSGI config for pappy project.
+WSGI config for Pappi project.
 
 It exposes the WSGI callable as a module-level variable named ``application``.
 

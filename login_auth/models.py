@@ -6,29 +6,30 @@ from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
 from django.core.validators import RegexValidator
+from .services import SMSService
+import random
+import logging
+
+# Настройка логирования
+logger = logging.getLogger('zaglushka')
 
 class UserManager(BaseUserManager):
     def create_user(self, phone, password=None, **extra_fields):
-        if not phone:
-            raise ValueError('The Phone field must be set')
-        location = extra_fields.pop('location', None)
-        user = self.model(phone=phone, **extra_fields)
-        if location:
-            user.location = location
-        if password:
-            user.set_password(password)
-        user.save(using=self._db)
-        return user
+        try:
+            if not phone:
+                raise ValueError('Номер телефона обязателен')
+            user = self.model(phone=phone, **extra_fields)
+            if password:
+                user.set_password(password)
+            user.save(using=self._db)
+            return user
+        except Exception as e:
+            logger.error(f'Ошибка при создании пользователя: {str(e)}', exc_info=True)
+            raise
     
     def create_superuser(self, phone, password=None, **extra_fields):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
-        
-        if extra_fields.get('is_staff') is not True:
-            raise ValueError('Superuser must have is_staff=True.')
-        if extra_fields.get('is_superuser') is not True:
-            raise ValueError('Superuser must have is_superuser=True.')
-        
         return self.create_user(phone, password, **extra_fields)
 
 class User(AbstractUser):
@@ -38,8 +39,17 @@ class User(AbstractUser):
     )
     
     # Основные поля
-    phone = models.CharField(_('телефон'), validators=[phone_regex], max_length=17, unique=True)
+    phone = models.CharField(
+        _('телефон'), 
+        validators=[phone_regex], 
+        max_length=17, 
+        unique=True
+    )
     email = models.EmailField(_('email'), blank=True)
+    created_at = models.DateTimeField(
+        _('дата регистрации'),
+        default=timezone.now
+    )
     
     # Статусы пользователя
     is_verified = models.BooleanField(_('верифицирован'), default=False)
@@ -60,61 +70,100 @@ class User(AbstractUser):
     class Meta:
         verbose_name = _('пользователь')
         verbose_name_plural = _('пользователи')
-        
+    
     def __str__(self):
         return self.phone
 
-class PhoneVerification(models.Model):
-    phone = models.CharField('Телефон', max_length=15)
-    code = models.CharField('Код', max_length=6)
-    attempts = models.IntegerField('Попытки', default=0)
-    is_verified = models.BooleanField('Подтвержден', default=False)
-    is_blocked = models.BooleanField('Заблокирован', default=False)
-    created = models.DateTimeField('Создан', auto_now_add=True)
+class OneTimeCode(models.Model):
+    CODE_LENGTH = 4
+    EXPIRY_TIME_MINUTES = 5
+    MAX_ATTEMPTS = 3
     
+    phone = models.CharField(
+        'Номер телефона',
+        max_length=17
+    )
+    code = models.CharField(
+        'Код подтверждения',
+        max_length=4
+    )
+    created_at = models.DateTimeField(
+        'Создан',
+        auto_now_add=True
+    )
+    expires_at = models.DateTimeField(
+        'Истекает'
+    )
+    attempts = models.IntegerField(
+        'Попытки',
+        default=0
+    )
+    is_verified = models.BooleanField(
+        'Подтвержден',
+        default=False
+    )
+
     class Meta:
-        verbose_name = 'Верификация телефона'
-        verbose_name_plural = 'Верификации телефонов'
-    
+        verbose_name = 'Код подтверждения'
+        verbose_name_plural = 'Коды подтверждения'
+        ordering = ['-created_at']
+
     def __str__(self):
-        return f'{self.phone} - {self.code}'
-    
-    def generate_code(self):
-        """Генерирует новый код подтверждения"""
-        self.code = get_random_string(6, '0123456789')
-        self.attempts = 0
-        self.is_verified = False
-        self.is_blocked = False
-        self.created = timezone.now()
-        self.save()
-        return self.code
-    
-    def verify(self, code):
-        """Проверяет код подтверждения"""
-        if self.is_blocked:
-            return False
-        
-        if self.is_expired():
-            return False
-        
-        if self.attempts >= settings.MAX_VERIFICATION_ATTEMPTS:
-            self.is_blocked = True
-            self.save()
-            return False
-        
-        if self.code == code:
-            self.is_verified = True
-            self.save()
-            return True
-        
-        self.attempts += 1
-        self.save()
-        return False
-    
+        return f'Код для {self.phone}'
+
     def is_expired(self):
         """Проверяет, истек ли срок действия кода"""
-        expiry = self.created + timedelta(minutes=settings.CODE_EXPIRY_MINUTES)
-        return timezone.now() > expiry
+        return timezone.now() > self.expires_at
+    
+    def is_blocked(self):
+        """Проверяет, не превышено ли количество попыток"""
+        return self.attempts >= self.MAX_ATTEMPTS
+    
+    def verify(self, input_code):
+        """Проверяет код и обновляет статус"""
+        try:
+            if self.is_expired():
+                return False, 'Код истек'
+            
+            if self.is_blocked():
+                return False, 'Превышено количество попыток'
+            
+            if self.code != input_code:
+                self.attempts += 1
+                self.save()
+                return False, 'Неверный код'
+            
+            self.is_verified = True
+            self.save()
+            return True, None
+            
+        except Exception as e:
+            logger.error(f'Ошибка при проверке кода: {str(e)}', exc_info=True)
+            return False, 'Произошла ошибка при проверке кода'
+
+    @staticmethod
+    def generate_code(phone):
+        """Генерирует новый код подтверждения"""
+        try:
+            # Деактивируем старые коды
+            OneTimeCode.objects.filter(phone=phone).update(is_verified=True)
+            
+            # Генерируем новый код
+            code = ''.join([str(random.randint(0, 9)) for _ in range(4)])
+            
+            # Создаем новую запись
+            verification = OneTimeCode.objects.create(
+                phone=phone,
+                code=code,
+                expires_at=timezone.now() + timedelta(minutes=OneTimeCode.EXPIRY_TIME_MINUTES)
+            )
+            
+            logger.info(f"Generated new code for {phone}")
+            return verification
+            
+        except Exception as e:
+            logger.error(f"Error generating code for {phone}: {str(e)}", exc_info=True)
+            raise
 
 class SellerVerification(models.Model):
     STATUS_CHOICES = (

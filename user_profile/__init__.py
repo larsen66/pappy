@@ -1,0 +1,3 @@
+"""
+User Profile application initialization.
+""" 
