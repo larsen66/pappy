@@ -38,7 +38,6 @@ INSTALLED_APPS = [
     'django_otp.plugins.otp_totp',
     'django_otp.plugins.otp_static',
     'rest_framework',
-    'environ',
     
     # Local apps
     'login_auth.apps.LoginAuthConfig',
@@ -182,7 +181,10 @@ SMS_API_ID = os.getenv('SMS_API_ID', '80746AAB-3314-EE3B-B48A-61C607DE7446')  # 
 SMS_ENABLED = os.getenv('SMS_ENABLED', 'True') == 'True'  # Enable/disable actual SMS sending
 SMS_TEST_MODE = os.getenv('SMS_TEST_MODE', 'True') == 'True'  # Enable/disable test mode for SMS
 
-# Logging
+# Logging Configuration
+LOGS_DIR = BASE_DIR / 'logs'
+LOGS_DIR.mkdir(exist_ok=True)
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -202,9 +204,10 @@ LOGGING = {
             'formatter': 'simple',
         },
         'zaglushka_file': {
-            'level': 'ERROR',
-            'class': 'logging.FileHandler',
-            'filename': BASE_DIR / 'logs/zaglushka_errors.log',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': str(LOGS_DIR / 'zaglushka_errors.log'),
+            'maxBytes': 1024 * 1024 * 5,  # 5 MB
+            'backupCount': 5,
             'formatter': 'verbose',
         },
     },

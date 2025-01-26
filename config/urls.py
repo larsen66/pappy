@@ -10,6 +10,10 @@ urlpatterns = [
     path('chat/', include('chat.urls')),
     path('notifications/', include('notifications.urls')),
     path('', include('catalog.urls')),
+    path('announcements/', include('announcements.urls')),
+    path('chat/', include('chat.urls')),
+    path('pets/', include('pets.urls')),
+
 ]
 
 if settings.DEBUG:

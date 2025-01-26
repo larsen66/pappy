@@ -139,13 +139,13 @@ def create_dialog(request, product_id):
 def chat_list(request):
     """Список чатов пользователя"""
     chats = Chat.objects.filter(participants=request.user)
-    return render(request, 'chat/chat_list.html', {'chats': chats})
+    return render(request, 'chat/dialogs_list.html', {'chats': chats})
 
 @login_required
 def chat_detail(request, chat_id):
     """Детальная страница чата"""
     chat = get_object_or_404(Chat, id=chat_id, participants=request.user)
-    return render(request, 'chat/chat_detail.html', {'chat': chat})
+    return render(request, 'chat/dialog_detail.html', {'chat': chat})
 
 @login_required
 def create_chat(request, user_id):
