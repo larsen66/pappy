@@ -43,7 +43,7 @@ INSTALLED_APPS = [
     # Local apps
     'login_auth.apps.LoginAuthConfig',
     'catalog.apps.CatalogConfig',
-    'kotopsinder.apps.KotopsinderConfig',
+    'pets.apps.PetsConfig',
     'chat.apps.ChatConfig',
     'notifications.apps.NotificationsConfig',
     'user_profile.apps.UserProfileConfig',
