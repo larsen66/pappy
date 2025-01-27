@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% load static %}
+
+{% block title %}{% trans "Уведомление" %} - {{ notification.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.notification-detail-card {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 2rem;
+    margin-bottom: 1.5rem;
+}
+
+.notification-meta {
+    color: #6c757d;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+}
+
+.notification-type {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    background-color: #e9ecef;
+    margin-right: 0.5rem;
+}
+
+.notification-content {
+    margin: 1.5rem 0;
+}
+
+.notification-message {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    color: #2c3e50;
+}
+
+.notification-target {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e9ecef;
+}
+
+.target-preview {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-top: 1rem;
+}
+
+.target-preview img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>{% trans "Уведомление" %}</h1>
+        <div>
+            <a href="{% url 'notifications:list' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> {% trans "К списку уведомлений" %}
+            </a>
+        </div>
+    </div>
+
+    <div class="notification-detail-card">
+        <!-- Мета-информация -->
+        <div class="notification-meta">
+            <span class="notification-type">
+                {% if notification.notification_type == 'match' %}
+                    <i class="fas fa-heart"></i> {% trans "Совпадение" %}
+                {% elif notification.notification_type == 'message' %}
+                    <i class="fas fa-envelope"></i> {% trans "Сообщение" %}
+                {% elif notification.notification_type == 'status' %}
+                    <i class="fas fa-info-circle"></i> {% trans "Статус" %}
+                {% elif notification.notification_type == 'lost_pet' %}
+                    <i class="fas fa-search"></i> {% trans "Потерянное животное" %}
+                {% endif %}
+            </span>
+            <span title="{{ notification.created_at|date:'d.m.Y H:i' }}">
+                {{ notification.created_at|timesince }}
+            </span>
+        </div>
+
+        <!-- Заголовок -->
+        <h2>{{ notification.title }}</h2>
+
+        <!-- Основное содержимое -->
+        <div class="notification-content">
+            <div class="notification-message">
+                {{ notification.message }}
+            </div>
+
+            {% if notification.content_object %}
+            <div class="notification-target">
+                <h4>{% trans "Связанный объект" %}</h4>
+                <div class="target-preview">
+                    {% with target_type=notification.content_type.model %}
+                        {% if target_type == 'animalannouncement' %}
+                            {% with animal=notification.content_object %}
+                                <div class="row">
+                                    {% if animal.images.exists %}
+                                    <div class="col-md-4">
+                                        <img src="{{ animal.images.first.image.url }}" 
+                                             alt="{{ animal.title }}"
+                                             class="img-fluid">
+                                    </div>
+                                    {% endif %}
+                                    <div class="col">
+                                        <h5>{{ animal.title }}</h5>
+                                        <p>{{ animal.description|truncatewords:50 }}</p>
+                                        <a href="{{ notification.get_target_url }}" class="btn btn-primary">
+                                            {% trans "Перейти к объявлению" %}
+                                        </a>
+                                    </div>
+                                </div>
+                            {% endwith %}
+                        {% elif target_type == 'message' %}
+                            {% with message=notification.content_object %}
+                                <div class="message-preview">
+                                    <p><strong>{% trans "От" %}:</strong> {{ message.sender.get_full_name }}</p>
+                                    <p>{{ message.text|truncatewords:50 }}</p>
+                                    <a href="{{ notification.get_target_url }}" class="btn btn-primary">
+                                        {% trans "Перейти к диалогу" %}
+                                    </a>
+                                </div>
+                            {% endwith %}
+                        {% elif target_type == 'lostpet' %}
+                            {% with pet=notification.content_object %}
+                                <div class="row">
+                                    {% if pet.images.exists %}
+                                    <div class="col-md-4">
+                                        <img src="{{ pet.images.first.image.url }}" 
+                                             alt="{% trans 'Фото потерянного животного' %}"
+                                             class="img-fluid">
+                                    </div>
+                                    {% endif %}
+                                    <div class="col">
+                                        <h5>{{ pet.pet_type }} - {{ pet.breed }}</h5>
+                                        <p>{{ pet.distinctive_features|truncatewords:50 }}</p>
+                                        <p><strong>{% trans "Последнее место:" %}</strong> {{ pet.last_seen_address }}</p>
+                                        <a href="{{ notification.get_target_url }}" class="btn btn-primary">
+                                            {% trans "Подробнее" %}
+                                        </a>
+                                    </div>
+                                </div>
+                            {% endwith %}
+                        {% endif %}
+                    {% endwith %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %} 

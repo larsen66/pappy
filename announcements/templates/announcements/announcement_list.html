@@ -7,74 +7,173 @@
 {% block content %}
 <div class="container mt-4">
     <div class="row">
+        <!-- Фильтры -->
         <div class="col-md-3">
             <div class="card mb-4">
                 <div class="card-body">
                     <h5 class="card-title">{% trans "Фильтры" %}</h5>
-                    <form method="get">
-                        {{ form|crispy }}
-                        <button type="submit" class="btn btn-primary">{% trans "Применить" %}</button>
-                        <a href="{% url 'announcements:list' %}" class="btn btn-secondary">{% trans "Сбросить" %}</a>
+                    <form method="get" id="filter-form">
+                        <!-- Поиск -->
+                        <div class="mb-3">
+                            {{ form.query|as_crispy_field }}
+                        </div>
+                        
+                        <!-- Категории -->
+                        <div class="mb-3">
+                            {{ filter.form.category|as_crispy_field }}
+                        </div>
+                        
+                        <!-- Тип объявления -->
+                        <div class="mb-3">
+                            {{ filter.form.type|as_crispy_field }}
+                        </div>
+                        
+                        <!-- Цена -->
+                        <div class="mb-3">
+                            <label class="form-label">{% trans "Цена" %}</label>
+                            <div class="row">
+                                <div class="col">
+                                    {{ filter.form.min_price|as_crispy_field }}
+                                </div>
+                                <div class="col">
+                                    {{ filter.form.max_price|as_crispy_field }}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Местоположение -->
+                        <div class="mb-3">
+                            {{ filter.form.location|as_crispy_field }}
+                            {{ filter.form.radius|as_crispy_field }}
+                        </div>
+                        
+                        <!-- Фильтры для животных -->
+                        <div id="animal-filters" class="{% if filter.form.type.value != 'animal' %}d-none{% endif %}">
+                            {{ filter.form.species|as_crispy_field }}
+                            {{ filter.form.breed|as_crispy_field }}
+                            <div class="row">
+                                <div class="col">
+                                    {{ filter.form.age_min|as_crispy_field }}
+                                </div>
+                                <div class="col">
+                                    {{ filter.form.age_max|as_crispy_field }}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Фильтры для услуг -->
+                        <div id="service-filters" class="{% if filter.form.type.value != 'service' %}d-none{% endif %}">
+                            {{ filter.form.service_type|as_crispy_field }}
+                            {{ filter.form.experience|as_crispy_field }}
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary w-100">{% trans "Применить" %}</button>
+                        <a href="{% url 'announcements:list' %}" class="btn btn-outline-secondary w-100 mt-2">
+                            {% trans "Сбросить" %}
+                        </a>
                     </form>
                 </div>
             </div>
         </div>
+        
+        <!-- Список объявлений -->
         <div class="col-md-9">
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2>{% trans "Объявления" %}</h2>
-                <div>
-                    <a href="{% url 'announcements:create_animal' %}" class="btn btn-primary">{% trans "Разместить объявление о животном" %}</a>
-                    <a href="{% url 'announcements:create_service' %}" class="btn btn-primary">{% trans "Разместить объявление об услуге" %}</a>
+                <h2>{% trans "Объявления" %} <small class="text-muted">({{ page_obj.paginator.count }})</small></h2>
+                
+                <!-- Сортировка -->
+                <div class="d-flex gap-3 align-items-center">
+                    <label class="form-label mb-0">{% trans "Сортировка:" %}</label>
+                    <select class="form-select" id="sort-select">
+                        <option value="date_desc" {% if current_sort == 'date_desc' %}selected{% endif %}>
+                            {% trans "Сначала новые" %}
+                        </option>
+                        <option value="date_asc" {% if current_sort == 'date_asc' %}selected{% endif %}>
+                            {% trans "Сначала старые" %}
+                        </option>
+                        <option value="price_asc" {% if current_sort == 'price_asc' %}selected{% endif %}>
+                            {% trans "Сначала дешевле" %}
+                        </option>
+                        <option value="price_desc" {% if current_sort == 'price_desc' %}selected{% endif %}>
+                            {% trans "Сначала дороже" %}
+                        </option>
+                        <option value="popular" {% if current_sort == 'popular' %}selected{% endif %}>
+                            {% trans "По популярности" %}
+                        </option>
+                    </select>
                 </div>
             </div>
-            <div class="row">
+            
+            <!-- Сетка объявлений -->
+            <div class="row row-cols-1 row-cols-md-3 g-4">
                 {% for announcement in announcements %}
-                <div class="col-md-4 mb-4">
-                    <div class="card h-100">
+                <div class="col">
+                    <div class="card h-100 {% if announcement.is_premium %}border-warning{% endif %}">
                         {% if announcement.images.exists %}
-                        <img src="{{ announcement.images.first.image.url }}" class="card-img-top" alt="{{ announcement.title }}">
+                        <img src="{{ announcement.images.first.image.url }}" 
+                             class="card-img-top" 
+                             alt="{{ announcement.title }}"
+                             style="height: 200px; object-fit: cover;">
                         {% endif %}
                         <div class="card-body">
                             <h5 class="card-title">{{ announcement.title }}</h5>
                             <p class="card-text">{{ announcement.description|truncatewords:20 }}</p>
+                            {% if announcement.price %}
+                            <p class="card-text">
+                                <strong class="text-primary">{{ announcement.price }} ₽</strong>
+                            </p>
+                            {% endif %}
                             <p class="card-text">
                                 <small class="text-muted">
                                     {{ announcement.get_type_display }} • {{ announcement.location }}
                                 </small>
                             </p>
-                            {% if announcement.price %}
-                            <p class="card-text">
-                                <strong>{% trans "Цена:" %}</strong> {{ announcement.price }} ₽
-                            </p>
-                            {% endif %}
-                            <a href="{% url 'announcements:detail' pk=announcement.pk %}" class="btn btn-primary">{% trans "Подробнее" %}</a>
+                        </div>
+                        <div class="card-footer bg-transparent">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted">{{ announcement.created_at|timesince }}</small>
+                                <a href="{% url 'announcements:detail' announcement.id %}" 
+                                   class="btn btn-outline-primary btn-sm">
+                                    {% trans "Подробнее" %}
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
                 {% empty %}
                 <div class="col-12">
                     <div class="alert alert-info">
-                        {% trans "Объявления не найдены" %}
+                        {% trans "По вашему запросу ничего не найдено" %}
                     </div>
                 </div>
                 {% endfor %}
             </div>
+            
+            <!-- Пагинация -->
             {% if announcements.has_other_pages %}
-            <nav aria-label="Page navigation" class="mt-4">
+            <nav class="mt-4">
                 <ul class="pagination justify-content-center">
                     {% if announcements.has_previous %}
                     <li class="page-item">
-                        <a class="page-link" href="?page={{ announcements.previous_page_number }}">{% trans "Назад" %}</a>
+                        <a class="page-link" href="?page={{ announcements.previous_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}">
+                            {% trans "Назад" %}
+                        </a>
                     </li>
                     {% endif %}
-                    {% for i in announcements.paginator.page_range %}
-                    <li class="page-item {% if announcements.number == i %}active{% endif %}">
-                        <a class="page-link" href="?page={{ i }}">{{ i }}</a>
+                    
+                    {% for num in announcements.paginator.page_range %}
+                    <li class="page-item {% if announcements.number == num %}active{% endif %}">
+                        <a class="page-link" href="?page={{ num }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}">
+                            {{ num }}
+                        </a>
                     </li>
                     {% endfor %}
+                    
                     {% if announcements.has_next %}
                     <li class="page-item">
-                        <a class="page-link" href="?page={{ announcements.next_page_number }}">{% trans "Вперед" %}</a>
+                        <a class="page-link" href="?page={{ announcements.next_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}">
+                            {% trans "Вперед" %}
+                        </a>
                     </li>
                     {% endif %}
                 </ul>
@@ -83,4 +182,40 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Обработка изменения сортировки
+    const sortSelect = document.getElementById('sort-select');
+    if (sortSelect) {
+        sortSelect.addEventListener('change', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            urlParams.set('sort', this.value);
+            window.location.search = urlParams.toString();
+        });
+    }
+    
+    // Показ/скрытие специальных фильтров
+    const typeSelect = document.querySelector('select[name="type"]');
+    const animalFilters = document.getElementById('animal-filters');
+    const serviceFilters = document.getElementById('service-filters');
+    
+    if (typeSelect) {
+        typeSelect.addEventListener('change', function() {
+            if (this.value === 'animal') {
+                animalFilters.classList.remove('d-none');
+                serviceFilters.classList.add('d-none');
+            } else if (this.value === 'service') {
+                serviceFilters.classList.remove('d-none');
+                animalFilters.classList.add('d-none');
+            } else {
+                animalFilters.classList.add('d-none');
+                serviceFilters.classList.add('d-none');
+            }
+        });
+    }
+});
+</script>
 {% endblock %} 

@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load crispy_forms_tags %}
+
+{% block title %}{% trans "Подать объявление о пропаже" %}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<style>
+    #map {
+        height: 400px;
+        margin-bottom: 20px;
+    }
+    .location-error {
+        display: none;
+        color: #dc3545;
+        margin-top: 5px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-body">
+                    <h2 class="card-title mb-4">{% trans "Подать объявление о пропаже" %}</h2>
+                    
+                    <form method="post" enctype="multipart/form-data" id="lost-pet-form">
+                        {% csrf_token %}
+                        
+                        <!-- Основная информация -->
+                        <div class="mb-4">
+                            <h4>{% trans "Основная информация" %}</h4>
+                            {{ form.status|as_crispy_field }}
+                            {{ form.date_lost_found|as_crispy_field }}
+                        </div>
+                        
+                        <!-- Характеристики животного -->
+                        <div class="mb-4">
+                            <h4>{% trans "Характеристики животного" %}</h4>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    {{ form.pet_type|as_crispy_field }}
+                                    {{ form.breed|as_crispy_field }}
+                                    {{ form.color|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6">
+                                    {{ form.age|as_crispy_field }}
+                                    {{ form.has_collar|as_crispy_field }}
+                                    {{ form.has_chip|as_crispy_field }}
+                                    <div id="chip-number-field" class="{% if not form.has_chip.value %}d-none{% endif %}">
+                                        {{ form.chip_number|as_crispy_field }}
+                                    </div>
+                                </div>
+                            </div>
+                            {{ form.distinctive_features|as_crispy_field }}
+                        </div>
+                        
+                        <!-- Местоположение -->
+                        <div class="mb-4">
+                            <h4>{% trans "Местоположение" %}</h4>
+                            <div id="map"></div>
+                            <div class="location-error">
+                                {% trans "Пожалуйста, укажите место на карте" %}
+                            </div>
+                            {{ form.latitude }}
+                            {{ form.longitude }}
+                            {{ form.last_seen_address|as_crispy_field }}
+                            {{ form.search_radius|as_crispy_field }}
+                        </div>
+                        
+                        <!-- Контактная информация -->
+                        <div class="mb-4">
+                            <h4>{% trans "Контактная информация" %}</h4>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    {{ form.contact_name|as_crispy_field }}
+                                    {{ form.contact_phone|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6">
+                                    {{ form.contact_email|as_crispy_field }}
+                                    {{ form.reward_offered|as_crispy_field }}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Фотографии -->
+                        <div class="mb-4">
+                            <h4>{% trans "Фотографии" %}</h4>
+                            {{ image_form|crispy }}
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                {% trans "Опубликовать объявление" %}
+                            </button>
+                            <a href="{% url 'announcements:list' %}" class="btn btn-outline-secondary">
+                                {% trans "Отмена" %}
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Инициализация карты
+    var map = L.map('map').setView([55.7558, 37.6173], 10);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+    
+    var marker;
+    
+    // Обработка клика по карте
+    map.on('click', function(e) {
+        if (marker) {
+            map.removeLayer(marker);
+        }
+        marker = L.marker(e.latlng).addTo(map);
+        
+        // Обновляем скрытые поля с координатами
+        document.getElementById('id_latitude').value = e.latlng.lat;
+        document.getElementById('id_longitude').value = e.latlng.lng;
+        
+        // Получаем адрес по координатам
+        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${e.latlng.lat}&lon=${e.latlng.lng}`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('id_last_seen_address').value = data.display_name;
+            });
+        
+        document.querySelector('.location-error').style.display = 'none';
+    });
+    
+    // Показ/скрытие поля номера чипа
+    const chipCheckbox = document.getElementById('id_has_chip');
+    const chipNumberField = document.getElementById('chip-number-field');
+    
+    chipCheckbox.addEventListener('change', function() {
+        chipNumberField.classList.toggle('d-none', !this.checked);
+    });
+    
+    // Валидация формы
+    document.getElementById('lost-pet-form').addEventListener('submit', function(e) {
+        const lat = document.getElementById('id_latitude').value;
+        const lng = document.getElementById('id_longitude').value;
+        
+        if (!lat || !lng) {
+            e.preventDefault();
+            document.querySelector('.location-error').style.display = 'block';
+            document.getElementById('map').scrollIntoView({ behavior: 'smooth' });
+        }
+    });
+});
+</script>
+{% endblock %} 

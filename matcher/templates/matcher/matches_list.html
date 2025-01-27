@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load static %}
+
+{% block title %}{% trans "Подходящие питомцы" %}{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'css/swiper-bundle.min.css' %}" rel="stylesheet">
+<style>
+    .match-card {
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s ease;
+    }
+    .match-card:hover {
+        transform: translateY(-5px);
+    }
+    .match-image {
+        height: 250px;
+        object-fit: cover;
+    }
+    .match-score {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: rgba(255, 255, 255, 0.9);
+        padding: 5px 10px;
+        border-radius: 20px;
+        font-weight: bold;
+    }
+    .match-criteria {
+        font-size: 0.9rem;
+    }
+    .match-criteria span {
+        display: inline-block;
+        margin: 2px;
+        padding: 2px 8px;
+        background: #f8f9fa;
+        border-radius: 12px;
+    }
+    .swiper-container {
+        padding: 20px 0;
+    }
+    .action-buttons {
+        position: absolute;
+        bottom: 10px;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+    }
+    .action-button {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    .like-button {
+        background: #28a745;
+        color: white;
+    }
+    .dislike-button {
+        background: #dc3545;
+        color: white;
+    }
+    .favorite-button {
+        background: #ffc107;
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="display-4">{% trans "Подходящие питомцы" %}</h1>
+            <p class="lead">{% trans "Мы подобрали питомцев, которые могут вам понравиться" %}</p>
+        </div>
+        <div class="col-auto">
+            <a href="{% url 'matcher:preferences_update' %}" class="btn btn-outline-primary">
+                <i class="fas fa-cog"></i> {% trans "Настройки поиска" %}
+            </a>
+        </div>
+    </div>
+
+    {% if matches %}
+    <div class="swiper-container">
+        <div class="swiper-wrapper">
+            {% for match in matches %}
+            <div class="swiper-slide">
+                <div class="match-card">
+                    {% if match.animal.announcement.images.exists %}
+                    <img src="{{ match.animal.announcement.images.first.image.url }}" 
+                         class="match-image w-100" 
+                         alt="{{ match.animal.breed }}">
+                    {% else %}
+                    <img src="{% static 'images/no-image.jpg' %}" 
+                         class="match-image w-100" 
+                         alt="No image">
+                    {% endif %}
+                    
+                    <div class="match-score">
+                        <i class="fas fa-star text-warning"></i>
+                        {{ match.score|floatformat:0 }}%
+                    </div>
+                    
+                    <div class="card-body">
+                        <h5 class="card-title">{{ match.animal.breed }}</h5>
+                        <p class="card-text">
+                            <small>
+                                <i class="fas fa-venus-mars"></i> {{ match.animal.get_gender_display }},
+                                <i class="fas fa-birthday-cake"></i> {{ match.animal.age }} {% trans "лет" %}
+                            </small>
+                        </p>
+                        
+                        <div class="match-criteria mb-3">
+                            {% for criterion in match.criteria %}
+                            <span>{{ criterion }}</span>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="action-buttons">
+                            <button class="action-button dislike-button" 
+                                    onclick="recordInteraction('{{ match.animal.id }}', 'dislike')">
+                                <i class="fas fa-times"></i>
+                            </button>
+                            <button class="action-button like-button"
+                                    onclick="recordInteraction('{{ match.animal.id }}', 'like')">
+                                <i class="fas fa-heart"></i>
+                            </button>
+                            <button class="action-button favorite-button"
+                                    onclick="recordInteraction('{{ match.animal.id }}', 'favorite')">
+                                <i class="fas fa-star"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="swiper-pagination"></div>
+        <div class="swiper-button-next"></div>
+        <div class="swiper-button-prev"></div>
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <h3>{% trans "Пока нет подходящих питомцев" %}</h3>
+        <p>{% trans "Попробуйте изменить настройки поиска или зайдите позже" %}</p>
+        <a href="{% url 'matcher:preferences_update' %}" class="btn btn-primary">
+            {% trans "Изменить настройки" %}
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/swiper-bundle.min.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Инициализация Swiper
+    new Swiper('.swiper-container', {
+        slidesPerView: 1,
+        spaceBetween: 30,
+        loop: false,
+        pagination: {
+            el: '.swiper-pagination',
+            clickable: true,
+        },
+        navigation: {
+            nextEl: '.swiper-button-next',
+            prevEl: '.swiper-button-prev',
+        },
+        breakpoints: {
+            640: {
+                slidesPerView: 2,
+            },
+            1024: {
+                slidesPerView: 3,
+            },
+        }
+    });
+    
+    // Функция для записи взаимодействий
+    window.recordInteraction = function(animalId, type) {
+        fetch('{% url "matcher:record_interaction" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: `animal_id=${animalId}&type=${type}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Анимация успешного действия
+                const button = event.target.closest('.action-button');
+                button.style.transform = 'scale(1.2)';
+                setTimeout(() => {
+                    button.style.transform = 'scale(1)';
+                }, 200);
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    };
+});
+</script>
+{% endblock %} 

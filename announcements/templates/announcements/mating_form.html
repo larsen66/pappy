@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load crispy_forms_tags %}
+
+{% block title %}
+    {% if is_update %}
+        {% trans "Редактировать объявление о вязке" %}
+    {% else %}
+        {% trans "Создать объявление о вязке" %}
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-body">
+                    <h2 class="card-title mb-4">
+                        {% if is_update %}
+                            {% trans "Редактировать объявление о вязке" %}
+                        {% else %}
+                            {% trans "Создать объявление о вязке" %}
+                        {% endif %}
+                    </h2>
+                    
+                    <form method="post" enctype="multipart/form-data" id="mating-form">
+                        {% csrf_token %}
+                        
+                        <!-- Характеристики животного -->
+                        <div class="mb-4">
+                            <h4>{% trans "Характеристики животного" %}</h4>
+                            {{ form.animal|as_crispy_field }}
+                        </div>
+                        
+                        <!-- Медицинские документы -->
+                        <div class="mb-4">
+                            <h4>{% trans "Медицинские документы" %}</h4>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    {{ form.has_medical_exam|as_crispy_field }}
+                                    {{ form.medical_exam_date|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6">
+                                    {{ form.vaccinations|as_crispy_field }}
+                                    {{ form.genetic_tests|as_crispy_field }}
+                                </div>
+                            </div>
+                            {{ form.medical_documents|as_crispy_field }}
+                        </div>
+                        
+                        <!-- Достижения и титулы -->
+                        <div class="mb-4">
+                            <h4>{% trans "Достижения и титулы" %}</h4>
+                            {{ form.titles|as_crispy_field }}
+                            {{ form.achievements|as_crispy_field }}
+                            {{ form.show_participation|as_crispy_field }}
+                        </div>
+                        
+                        <!-- Требования к партнеру -->
+                        <div class="mb-4">
+                            <h4>{% trans "Требования к партнеру" %}</h4>
+                            {{ form.partner_requirements|as_crispy_field }}
+                            <div class="row">
+                                <div class="col-md-6">
+                                    {{ form.preferred_breeds|as_crispy_field }}
+                                    {{ form.min_partner_age|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6">
+                                    {{ form.max_partner_age|as_crispy_field }}
+                                    {{ form.required_medical_tests|as_crispy_field }}
+                                </div>
+                            </div>
+                            {{ form.required_titles|as_crispy_field }}
+                        </div>
+                        
+                        <!-- Условия вязки -->
+                        <div class="mb-4">
+                            <h4>{% trans "Условия вязки" %}</h4>
+                            {{ form.mating_conditions|as_crispy_field }}
+                            {{ form.price_policy|as_crispy_field }}
+                            {{ form.contract_required|as_crispy_field }}
+                        </div>
+                        
+                        <!-- Фотографии -->
+                        {% if not is_update %}
+                        <div class="mb-4">
+                            <h4>{% trans "Фотографии" %}</h4>
+                            {{ image_form|crispy }}
+                        </div>
+                        {% endif %}
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                {% if is_update %}
+                                    {% trans "Сохранить изменения" %}
+                                {% else %}
+                                    {% trans "Создать объявление" %}
+                                {% endif %}
+                            </button>
+                            <a href="{% url 'announcements:list' %}" class="btn btn-outline-secondary">
+                                {% trans "Отмена" %}
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Показываем/скрываем поле даты медосмотра
+    const medicalExamCheckbox = document.getElementById('id_has_medical_exam');
+    const medicalExamDateField = document.getElementById('div_id_medical_exam_date');
+    
+    function toggleMedicalExamDate() {
+        if (medicalExamCheckbox) {
+            medicalExamDateField.style.display = medicalExamCheckbox.checked ? 'block' : 'none';
+        }
+    }
+    
+    if (medicalExamCheckbox && medicalExamDateField) {
+        medicalExamCheckbox.addEventListener('change', toggleMedicalExamDate);
+        toggleMedicalExamDate();
+    }
+    
+    // Форматирование JSON полей
+    const jsonFields = ['vaccinations', 'genetic_tests', 'show_participation', 'required_medical_tests', 'required_titles'];
+    
+    jsonFields.forEach(field => {
+        const input = document.getElementById(`id_${field}`);
+        if (input && input.value) {
+            try {
+                const formatted = JSON.stringify(JSON.parse(input.value), null, 2);
+                input.value = formatted;
+            } catch (e) {
+                console.error(`Error formatting ${field}:`, e);
+            }
+        }
+    });
+});
+</script>
+{% endblock %} 

@@ -1,129 +1,187 @@
 from django.db import models
 from django.conf import settings
+from django.utils.translation import gettext_lazy as _
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
+
+class NotificationPreference(models.Model):
+    """Настройки уведомлений пользователя"""
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='notification_preferences'
+    )
+    
+    # Email уведомления
+    email_new_matches = models.BooleanField(_('Новые совпадения'), default=True)
+    email_new_messages = models.BooleanField(_('Новые сообщения'), default=True)
+    email_status_updates = models.BooleanField(_('Обновления статуса'), default=True)
+    email_recommendations = models.BooleanField(_('Новые рекомендации'), default=True)
+    email_lost_pets = models.BooleanField(_('Потерянные животные'), default=True)
+    
+    # Push уведомления
+    push_new_matches = models.BooleanField(_('Новые совпадения'), default=True)
+    push_new_messages = models.BooleanField(_('Новые сообщения'), default=True)
+    push_status_updates = models.BooleanField(_('Обновления статуса'), default=True)
+    push_recommendations = models.BooleanField(_('Новые рекомендации'), default=True)
+    push_lost_pets = models.BooleanField(_('Потерянные животные'), default=True)
+    
+    # Настройки частоты
+    email_frequency = models.CharField(
+        _('Частота email уведомлений'),
+        max_length=20,
+        choices=[
+            ('instant', _('Мгновенно')),
+            ('daily', _('Раз в день')),
+            ('weekly', _('Раз в неделю')),
+        ],
+        default='instant'
+    )
+    
+    quiet_hours_start = models.TimeField(
+        _('Начало тихого времени'),
+        null=True,
+        blank=True
+    )
+    quiet_hours_end = models.TimeField(
+        _('Конец тихого времени'),
+        null=True,
+        blank=True
+    )
+    
+    # Геолокация для уведомлений о потерянных животных
+    lost_pets_radius = models.PositiveIntegerField(
+        _('Радиус уведомлений о потеряшках (км)'),
+        default=10
+    )
+    
+    class Meta:
+        verbose_name = _('Настройки уведомлений')
+        verbose_name_plural = _('Настройки уведомлений')
 
 class Notification(models.Model):
-    TYPES = (
-        ('message', 'Новое сообщение'),
-        ('profile', 'Обновление профиля'),
-        ('system', 'Системное уведомление'),
-    )
+    """Модель уведомления"""
+    NOTIFICATION_TYPES = [
+        ('match', _('Новое совпадение')),
+        ('message', _('Новое сообщение')),
+        ('status_update', _('Обновление статуса')),
+        ('recommendation', _('Рекомендация')),
+        ('lost_pet', _('Потерянное животное')),
+        ('system', _('Системное уведомление')),
+    ]
     
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name='notifications',
-        verbose_name='Пользователь'
+        related_name='notifications'
     )
     notification_type = models.CharField(
+        _('Тип уведомления'),
         max_length=20,
-        choices=TYPES,
-        verbose_name='Тип уведомления'
+        choices=NOTIFICATION_TYPES
     )
-    title = models.CharField(
-        max_length=255,
-        verbose_name='Заголовок'
-    )
-    message = models.TextField(
-        verbose_name='Сообщение'
-    )
-    is_read = models.BooleanField(
-        default=False,
-        verbose_name='Прочитано'
-    )
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name='Создано'
-    )
-
+    title = models.CharField(_('Заголовок'), max_length=255)
+    message = models.TextField(_('Сообщение'))
+    
+    # Связь с объектом уведомления (например, объявление или сообщение)
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey('content_type', 'object_id')
+    
+    # Метаданные
+    created_at = models.DateTimeField(_('Создано'), auto_now_add=True)
+    read_at = models.DateTimeField(_('Прочитано'), null=True, blank=True)
+    is_read = models.BooleanField(_('Прочитано'), default=False)
+    
+    # Статус отправки
+    is_email_sent = models.BooleanField(_('Email отправлен'), default=False)
+    is_push_sent = models.BooleanField(_('Push отправлен'), default=False)
+    
     class Meta:
-        verbose_name = 'Уведомление'
-        verbose_name_plural = 'Уведомления'
+        verbose_name = _('Уведомление')
+        verbose_name_plural = _('Уведомления')
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['notification_type']),
+            models.Index(fields=['is_read']),
+        ]
+    
+    def __str__(self):
+        return f"{self.get_notification_type_display()} для {self.user}"
+    
+    def mark_as_read(self):
+        """Отметить уведомление как прочитанное"""
+        from django.utils import timezone
+        self.is_read = True
+        self.read_at = timezone.now()
+        self.save()
+
+class NotificationBatch(models.Model):
+    """Модель для группировки уведомлений для отложенной отправки"""
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='notification_batches'
+    )
+    notifications = models.ManyToManyField(
+        Notification,
+        related_name='batch'
+    )
+    frequency = models.CharField(
+        _('Частота отправки'),
+        max_length=20,
+        choices=[
+            ('daily', _('Ежедневно')),
+            ('weekly', _('Еженедельно')),
+        ]
+    )
+    scheduled_at = models.DateTimeField(_('Запланировано на'))
+    sent_at = models.DateTimeField(_('Отправлено'), null=True, blank=True)
+    is_sent = models.BooleanField(_('Отправлено'), default=False)
+    
+    class Meta:
+        verbose_name = _('Пакет уведомлений')
+        verbose_name_plural = _('Пакеты уведомлений')
+        ordering = ['scheduled_at']
+        indexes = [
+            models.Index(fields=['user', 'scheduled_at']),
+            models.Index(fields=['is_sent']),
+        ]
+
+class PushToken(models.Model):
+    """Модель для хранения push-токенов устройств"""
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='push_tokens'
+    )
+    token = models.CharField(_('Push-токен'), max_length=255)
+    device_type = models.CharField(
+        _('Тип устройства'),
+        max_length=20,
+        choices=[
+            ('ios', 'iOS'),
+            ('android', 'Android'),
+            ('web', 'Web'),
+        ]
+    )
+    is_active = models.BooleanField(_('Активен'), default=True)
+    created_at = models.DateTimeField(_('Создан'), auto_now_add=True)
+    last_used_at = models.DateTimeField(
+        _('Последнее использование'),
+        null=True,
+        blank=True
+    )
+    
+    class Meta:
+        verbose_name = _('Push-токен')
+        verbose_name_plural = _('Push-токены')
+        unique_together = ('user', 'token')
+        indexes = [
+            models.Index(fields=['user', 'is_active']),
+            models.Index(fields=['token']),
+        ]
 
     def __str__(self):
-        return f'{self.get_notification_type_display()} для {self.user}'
-    
-    @classmethod
-    def create_message_notification(cls, user, chat):
-        """Создает уведомление о новом сообщении"""
-        last_message = chat.messages.last()
-        if last_message and last_message.sender != user:
-            return cls.objects.create(
-                user=user,
-                notification_type='message',
-                title='Новое сообщение',
-                message=f'Новое сообщение от {last_message.sender}'
-            )
-    
-    @classmethod
-    def create_profile_notification(cls, user, action):
-        """Создает уведомление об изменении профиля"""
-        return cls.objects.create(
-            user=user,
-            notification_type='profile',
-            title='Профиль обновлен',
-            message=f'Ваш профиль был {action}'
-        )
-    
-    @classmethod
-    def create_system_notification(cls, user, title, message):
-        """Создает системное уведомление"""
-        return cls.objects.create(
-            user=user,
-            notification_type='system',
-            title=title,
-            message=message
-        )
-    
-    @classmethod
-    def create_match_notification(cls, recipient, product):
-        """Создает уведомление о взаимном лайке"""
-        return cls.objects.create(
-            recipient=recipient,
-            type='match',
-            title='Новый матч!',
-            text=f'Взаимный интерес к объявлению "{product.title}"',
-            link=f'/chat/create/{product.id}/'
-        )
-    
-    @classmethod
-    def create_product_status_notification(cls, recipient, product, status):
-        """Создает уведомление об изменении статуса объявления"""
-        status_choices = {
-            'active': 'активный',
-            'archived': 'в архиве',
-            'draft': 'черновик',
-            'moderation': 'на модерации',
-            'rejected': 'отклонен'
-        }
-        status_display = status_choices.get(status, status)
-        return cls.objects.create(
-            recipient=recipient,
-            type='product_status',
-            title='Статус объявления изменен',
-            text=f'Статус вашего объявления "{product.title}" изменен на "{status_display}"',
-            link=f'/catalog/product/{product.slug}/'
-        )
-    
-    @classmethod
-    def create_verification_notification(cls, recipient, is_verified):
-        """Создает уведомление о результате верификации"""
-        status = 'подтвержден' if is_verified else 'отклонен'
-        return cls.objects.create(
-            recipient=recipient,
-            type='verification',
-            title='Результат верификации',
-            text=f'Ваш аккаунт {status}',
-            link='/profile/verification/'
-        )
-    
-    @classmethod
-    def create_lost_pet_notification(cls, recipient, product):
-        """Создает уведомление о потерянном питомце поблизости"""
-        return cls.objects.create(
-            recipient=recipient,
-            type='lost_pet_nearby',
-            title='Потерянный питомец рядом',
-            text=f'В вашем районе пропал питомец: {product.title}. Местоположение: {product.location}',
-            link=f'/catalog/product/{product.slug}/'
-        ) 
+        return f'{self.user} - {self.token}' 

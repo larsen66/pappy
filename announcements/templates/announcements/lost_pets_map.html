@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Карта потерянных животных" %}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<style>
+    #map {
+        height: calc(100vh - 56px);
+    }
+    .filters {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        z-index: 1000;
+        background: white;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        max-width: 300px;
+    }
+    .pet-popup {
+        max-width: 300px;
+    }
+    .pet-popup img {
+        width: 100%;
+        height: 150px;
+        object-fit: cover;
+        border-radius: 4px;
+        margin-bottom: 10px;
+    }
+    .marker-lost {
+        background-color: #dc3545;
+    }
+    .marker-found {
+        background-color: #28a745;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Фильтры -->
+<div class="filters">
+    <h5 class="mb-3">{% trans "Фильтры" %}</h5>
+    <form method="get" id="filter-form">
+        <div class="mb-3">
+            <label class="form-label">{% trans "Статус" %}</label>
+            <select name="status" class="form-select">
+                <option value="">{% trans "Все" %}</option>
+                <option value="lost" {% if request.GET.status == 'lost' %}selected{% endif %}>
+                    {% trans "Потерянные" %}
+                </option>
+                <option value="found" {% if request.GET.status == 'found' %}selected{% endif %}>
+                    {% trans "Найденные" %}
+                </option>
+            </select>
+        </div>
+        
+        <div class="mb-3">
+            <label class="form-label">{% trans "Вид животного" %}</label>
+            <select name="pet_type" class="form-select">
+                <option value="">{% trans "Все" %}</option>
+                <option value="dog" {% if request.GET.pet_type == 'dog' %}selected{% endif %}>
+                    {% trans "Собаки" %}
+                </option>
+                <option value="cat" {% if request.GET.pet_type == 'cat' %}selected{% endif %}>
+                    {% trans "Кошки" %}
+                </option>
+                <option value="other" {% if request.GET.pet_type == 'other' %}selected{% endif %}>
+                    {% trans "Другие" %}
+                </option>
+            </select>
+        </div>
+        
+        <div class="mb-3">
+            <label class="form-label">{% trans "Период" %}</label>
+            <select name="days" class="form-select">
+                <option value="">{% trans "За все время" %}</option>
+                <option value="1" {% if request.GET.days == '1' %}selected{% endif %}>
+                    {% trans "За последние 24 часа" %}
+                </option>
+                <option value="7" {% if request.GET.days == '7' %}selected{% endif %}>
+                    {% trans "За неделю" %}
+                </option>
+                <option value="30" {% if request.GET.days == '30' %}selected{% endif %}>
+                    {% trans "За месяц" %}
+                </option>
+            </select>
+        </div>
+        
+        <button type="submit" class="btn btn-primary w-100">{% trans "Применить" %}</button>
+    </form>
+    
+    <hr>
+    
+    <div class="d-grid gap-2">
+        <a href="{% url 'announcements:lost_pet_create' %}" class="btn btn-success">
+            {% trans "Подать объявление" %}
+        </a>
+    </div>
+</div>
+
+<!-- Карта -->
+<div id="map"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Инициализация карты
+    var map = L.map('map').setView([55.7558, 37.6173], 10);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+    
+    // Добавляем маркеры для каждого животного
+    {% for pet in lost_pets %}
+    var marker = L.marker(
+        [{{ pet.last_seen_location.y }}, {{ pet.last_seen_location.x }}],
+        {
+            icon: L.divIcon({
+                className: 'marker-{{ pet.status }}',
+                html: '<i class="fas fa-paw"></i>',
+                iconSize: [30, 30]
+            })
+        }
+    ).addTo(map);
+    
+    marker.bindPopup(`
+        <div class="pet-popup">
+            {% if pet.announcement.images.exists %}
+            <img src="{{ pet.announcement.images.first.image.url }}" alt="{{ pet.pet_type }}">
+            {% endif %}
+            <h6>{{ pet.get_status_display }} {{ pet.pet_type }}</h6>
+            <p><strong>{% trans "Порода:" %}</strong> {{ pet.breed }}</p>
+            <p><strong>{% trans "Цвет:" %}</strong> {{ pet.color }}</p>
+            <p><strong>{% trans "Дата:" %}</strong> {{ pet.date_lost_found|date:"d.m.Y H:i" }}</p>
+            <p><strong>{% trans "Особые приметы:" %}</strong><br>{{ pet.distinctive_features|truncatewords:20 }}</p>
+            <a href="{% url 'announcements:lost_pet_detail' pet.id %}" class="btn btn-primary btn-sm w-100">
+                {% trans "Подробнее" %}
+            </a>
+        </div>
+    `);
+    {% endfor %}
+    
+    // Центрируем карту по всем маркерам
+    if ({{ lost_pets|length }} > 0) {
+        var bounds = [];
+        {% for pet in lost_pets %}
+        bounds.push([{{ pet.last_seen_location.y }}, {{ pet.last_seen_location.x }}]);
+        {% endfor %}
+        map.fitBounds(bounds);
+    }
+});
+</script>
+{% endblock %} 

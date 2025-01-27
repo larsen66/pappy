@@ -1,0 +1,282 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% load static %}
+
+{% block title %}{% trans "Уведомления" %}{% endblock %}
+
+{% block extra_css %}
+<style>
+.notification-card {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    transition: all 0.3s ease;
+}
+
+.notification-card:hover {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.notification-card.unread {
+    background-color: #f8f9fa;
+    border-left: 4px solid #007bff;
+}
+
+.notification-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.notification-time {
+    color: #6c757d;
+    font-size: 0.875rem;
+}
+
+.notification-type {
+    font-size: 0.875rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    background-color: #e9ecef;
+}
+
+.notification-body {
+    color: #212529;
+}
+
+.notification-actions {
+    margin-top: 0.5rem;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.filter-section {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+}
+
+.filter-form {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>{% trans "Уведомления" %}</h1>
+        <div>
+            <a href="{% url 'notifications:preferences' %}" class="btn btn-outline-primary">
+                <i class="fas fa-cog"></i> {% trans "Настройки" %}
+            </a>
+        </div>
+    </div>
+
+    <!-- Фильтры -->
+    <div class="filter-section">
+        <form method="get" class="filter-form">
+            <div class="form-group mb-0">
+                <label for="type" class="me-2">{% trans "Тип:" %}</label>
+                <select name="type" id="type" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">{% trans "Все" %}</option>
+                    <option value="match" {% if current_type == 'match' %}selected{% endif %}>
+                        {% trans "Совпадения" %}
+                    </option>
+                    <option value="message" {% if current_type == 'message' %}selected{% endif %}>
+                        {% trans "Сообщения" %}
+                    </option>
+                    <option value="status" {% if current_type == 'status' %}selected{% endif %}>
+                        {% trans "Обновления статуса" %}
+                    </option>
+                    <option value="lost_pet" {% if current_type == 'lost_pet' %}selected{% endif %}>
+                        {% trans "Потерянные животные" %}
+                    </option>
+                </select>
+            </div>
+
+            <div class="form-group mb-0">
+                <label for="is_read" class="me-2">{% trans "Статус:" %}</label>
+                <select name="is_read" id="is_read" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">{% trans "Все" %}</option>
+                    <option value="false" {% if current_is_read == 'false' %}selected{% endif %}>
+                        {% trans "Непрочитанные" %}
+                    </option>
+                    <option value="true" {% if current_is_read == 'true' %}selected{% endif %}>
+                        {% trans "Прочитанные" %}
+                    </option>
+                </select>
+            </div>
+
+            {% if notifications.paginator.count > 0 %}
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="markAllRead">
+                {% trans "Отметить все как прочитанные" %}
+            </button>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Список уведомлений -->
+    {% if notifications %}
+        <div class="notifications-list">
+            {% for notification in notifications %}
+                <div class="notification-card {% if not notification.is_read %}unread{% endif %}" 
+                     data-notification-id="{{ notification.id }}">
+                    <div class="notification-header">
+                        <span class="notification-type">
+                            {% if notification.notification_type == 'match' %}
+                                <i class="fas fa-heart"></i> {% trans "Совпадение" %}
+                            {% elif notification.notification_type == 'message' %}
+                                <i class="fas fa-envelope"></i> {% trans "Сообщение" %}
+                            {% elif notification.notification_type == 'status' %}
+                                <i class="fas fa-info-circle"></i> {% trans "Статус" %}
+                            {% elif notification.notification_type == 'lost_pet' %}
+                                <i class="fas fa-search"></i> {% trans "Потерянное животное" %}
+                            {% endif %}
+                        </span>
+                        <span class="notification-time" title="{{ notification.created_at|date:'d.m.Y H:i' }}">
+                            {{ notification.created_at|timesince }}
+                        </span>
+                    </div>
+                    
+                    <div class="notification-body">
+                        <h5 class="mb-2">{{ notification.title }}</h5>
+                        <p class="mb-2">{{ notification.message }}</p>
+                    </div>
+
+                    <div class="notification-actions">
+                        {% if notification.content_object %}
+                            <a href="{{ notification.get_target_url }}" class="btn btn-sm btn-primary">
+                                {% trans "Подробнее" %}
+                            </a>
+                        {% endif %}
+                        {% if not notification.is_read %}
+                            <button class="btn btn-sm btn-outline-secondary mark-read" 
+                                    data-notification-id="{{ notification.id }}">
+                                {% trans "Отметить как прочитанное" %}
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Пагинация -->
+        {% if notifications.paginator.num_pages > 1 %}
+        <nav aria-label="{% trans 'Навигация по страницам' %}" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if notifications.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{% if current_type %}&type={{ current_type }}{% endif %}{% if current_is_read %}&is_read={{ current_is_read }}{% endif %}">
+                            &laquo;
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ notifications.previous_page_number }}{% if current_type %}&type={{ current_type }}{% endif %}{% if current_is_read %}&is_read={{ current_is_read }}{% endif %}">
+                            {% trans "Назад" %}
+                        </a>
+                    </li>
+                {% endif %}
+
+                <li class="page-item disabled">
+                    <span class="page-link">
+                        {% trans "Страница" %} {{ notifications.number }} {% trans "из" %} {{ notifications.paginator.num_pages }}
+                    </span>
+                </li>
+
+                {% if notifications.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ notifications.next_page_number }}{% if current_type %}&type={{ current_type }}{% endif %}{% if current_is_read %}&is_read={{ current_is_read }}{% endif %}">
+                            {% trans "Вперед" %}
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ notifications.paginator.num_pages }}{% if current_type %}&type={{ current_type }}{% endif %}{% if current_is_read %}&is_read={{ current_is_read }}{% endif %}">
+                            &raquo;
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    {% else %}
+        <div class="alert alert-info">
+            {% trans "У вас пока нет уведомлений" %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Отметить одно уведомление как прочитанное
+    document.querySelectorAll('.mark-read').forEach(button => {
+        button.addEventListener('click', function() {
+            const notificationId = this.dataset.notificationId;
+            markAsRead([notificationId]);
+        });
+    });
+
+    // Отметить все уведомления как прочитанные
+    document.getElementById('markAllRead')?.addEventListener('click', function() {
+        markAsRead();
+    });
+
+    function markAsRead(notificationIds = null) {
+        const data = new FormData();
+        if (notificationIds) {
+            notificationIds.forEach(id => data.append('notification_ids[]', id));
+        }
+
+        fetch('{% url "notifications:mark_as_read" %}', {
+            method: 'POST',
+            body: data,
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                if (notificationIds) {
+                    notificationIds.forEach(id => {
+                        const card = document.querySelector(`.notification-card[data-notification-id="${id}"]`);
+                        if (card) {
+                            card.classList.remove('unread');
+                            const markReadBtn = card.querySelector('.mark-read');
+                            if (markReadBtn) markReadBtn.remove();
+                        }
+                    });
+                } else {
+                    // Если отметили все как прочитанные, перезагружаем страницу
+                    window.location.reload();
+                }
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+});
+</script>
+{% endblock %} 
