@@ -72,9 +72,10 @@ class SwipeAction(models.Model):
                 )
             
             # В любом случае создаем диалог
-            Dialog.objects.get_or_create(
-                announcement=self.announcement,
-                user=self.user
+            Dialog.objects.get_or_create_for_users(
+                user1=self.user,
+                user2=self.announcement.author,
+                announcement=self.announcement
             )
 
 class SwipeHistory(models.Model):

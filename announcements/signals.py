@@ -20,7 +20,7 @@ def handle_announcement_status_change(sender, instance, **kwargs):
                 
                 # Create notification for the user
                 Notification.objects.create(
-                    user=instance.user,
+                    user=instance.author,
                     title=_('Announcement Approved'),
                     message=_('Your announcement "{}" has been approved and is now live.').format(instance.title),
                     notification_type='announcement_status'
@@ -28,7 +28,7 @@ def handle_announcement_status_change(sender, instance, **kwargs):
             elif instance.status == 'blocked':
                 # Create notification for the user
                 Notification.objects.create(
-                    user=instance.user,
+                    user=instance.author,
                     title=_('Announcement Blocked'),
                     message=_('Your announcement "{}" has been blocked. Please contact support for more information.').format(instance.title),
                     notification_type='announcement_status'
@@ -48,7 +48,7 @@ def handle_new_announcement(sender, instance, created, **kwargs):
         
         # Create notification for the user
         Notification.objects.create(
-            user=instance.user,
+            user=instance.author,
             title=_('Announcement Created'),
             message=_('Your announcement "{}" has been created and is pending review.').format(instance.title),
             notification_type='announcement_status'

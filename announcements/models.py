@@ -199,9 +199,20 @@ class LostFoundAnnouncement(models.Model):
     )
     
     type = models.CharField(_('Тип'), max_length=10, choices=TYPE_CHOICES)
-    animal_type = models.CharField(_('Вид животного'), max_length=20, choices=ANIMAL_TYPE_CHOICES)
+    animal_type = models.CharField(
+        _('Тип животного'),
+        max_length=20,
+        choices=ANIMAL_TYPE_CHOICES,
+        null=True,
+        blank=True
+    )
     breed = models.CharField(_('Порода'), max_length=100, blank=True)
-    color = models.CharField(_('Основной цвет'), max_length=50)
+    color = models.CharField(
+        _('Основной цвет'),
+        max_length=50,
+        null=True,
+        blank=True
+    )
     size = models.CharField(_('Размер'), max_length=20, choices=SIZE_CHOICES)
     distinctive_features = models.TextField(_('Отличительные черты'))
     
@@ -212,7 +223,12 @@ class LostFoundAnnouncement(models.Model):
     longitude = models.DecimalField(_('Долгота'), max_digits=9, decimal_places=6, null=True, blank=True)
     
     # Contact information
-    contact_phone = models.CharField(_('Контактный телефон'), max_length=20)
+    contact_phone = models.CharField(
+        _('Контактный телефон'),
+        max_length=20,
+        null=True,
+        blank=True
+    )
     contact_email = models.EmailField(_('Контактный email'), blank=True)
     reward_amount = models.DecimalField(
         _('Сумма вознаграждения'), 

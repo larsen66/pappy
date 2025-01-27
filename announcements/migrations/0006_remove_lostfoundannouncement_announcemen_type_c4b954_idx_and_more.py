@@ -6,94 +6,10 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('announcements', '0005_merge_20250126_2145'),
+        ('announcements', '0001_initial'),
     ]
 
     operations = [
-        migrations.RemoveIndex(
-            model_name='lostfoundannouncement',
-            name='announcemen_type_c4b954_idx',
-        ),
-        migrations.RemoveIndex(
-            model_name='lostfoundannouncement',
-            name='announcemen_latitud_dbf029_idx',
-        ),
-        migrations.RemoveField(
-            model_name='lostfoundannouncement',
-            name='animal_type',
-        ),
-        migrations.RemoveField(
-            model_name='lostfoundannouncement',
-            name='breed',
-        ),
-        migrations.RemoveField(
-            model_name='lostfoundannouncement',
-            name='color',
-        ),
-        migrations.RemoveField(
-            model_name='lostfoundannouncement',
-            name='color_pattern',
-        ),
-        migrations.RemoveField(
-            model_name='lostfoundannouncement',
-            name='contact_email',
-        ),
-        migrations.RemoveField(
-            model_name='lostfoundannouncement',
-            name='contact_phone',
-        ),
-        migrations.RemoveField(
-            model_name='lostfoundannouncement',
-            name='has_collar',
-        ),
-        migrations.RemoveField(
-            model_name='lostfoundannouncement',
-            name='has_microchip',
-        ),
-        migrations.RemoveField(
-            model_name='lostfoundannouncement',
-            name='has_tag',
-        ),
-        migrations.RemoveField(
-            model_name='lostfoundannouncement',
-            name='health_status',
-        ),
-        migrations.RemoveField(
-            model_name='lostfoundannouncement',
-            name='last_seen_details',
-        ),
-        migrations.RemoveField(
-            model_name='lostfoundannouncement',
-            name='last_seen_location',
-        ),
-        migrations.RemoveField(
-            model_name='lostfoundannouncement',
-            name='latitude',
-        ),
-        migrations.RemoveField(
-            model_name='lostfoundannouncement',
-            name='longitude',
-        ),
-        migrations.RemoveField(
-            model_name='lostfoundannouncement',
-            name='reward_amount',
-        ),
-        migrations.RemoveField(
-            model_name='lostfoundannouncement',
-            name='search_history',
-        ),
-        migrations.RemoveField(
-            model_name='lostfoundannouncement',
-            name='search_radius',
-        ),
-        migrations.RemoveField(
-            model_name='lostfoundannouncement',
-            name='size',
-        ),
-        migrations.RemoveField(
-            model_name='lostfoundannouncement',
-            name='temperament',
-        ),
         migrations.AlterField(
             model_name='lostfoundannouncement',
             name='date_lost_found',

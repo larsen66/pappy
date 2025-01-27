@@ -2,7 +2,7 @@ from django.db import models
 from django.conf import settings
 
 class DialogManager(models.Manager):
-    def get_or_create_for_users(self, user1, user2, product=None):
+    def get_or_create_for_users(self, user1, user2, announcement=None):
         """
         Получает или создает диалог между двумя пользователями
         """
@@ -10,7 +10,7 @@ class DialogManager(models.Manager):
         if dialog:
             return dialog, False
         
-        dialog = self.create(product=product)
+        dialog = self.create(announcement=announcement)
         dialog.participants.add(user1, user2)
         return dialog, True
 
@@ -20,11 +20,11 @@ class Dialog(models.Model):
         related_name='dialogs',
         verbose_name='Участники'
     )
-    product = models.ForeignKey(
-        'catalog.Product',
+    announcement = models.ForeignKey(
+        'announcements.Announcement',
         on_delete=models.CASCADE,
         related_name='dialogs',
-        verbose_name='Продукт',
+        verbose_name='Объявление',
         null=True,
         blank=True
     )
