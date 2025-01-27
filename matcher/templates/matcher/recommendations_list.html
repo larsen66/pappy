@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load static %}
+
+{% block title %}{% trans "Рекомендации" %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .recommendations-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 20px;
+        padding: 20px 0;
+    }
+    .recommendation-card {
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s ease;
+        position: relative;
+    }
+    .recommendation-card:hover {
+        transform: translateY(-5px);
+    }
+    .recommendation-image {
+        height: 200px;
+        width: 100%;
+        object-fit: cover;
+    }
+    .recommendation-type {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: rgba(255, 255, 255, 0.9);
+        padding: 5px 10px;
+        border-radius: 20px;
+        font-size: 0.9rem;
+    }
+    .recommendation-type.collaborative {
+        background-color: #e3f2fd;
+        color: #1976d2;
+    }
+    .recommendation-type.content-based {
+        background-color: #f3e5f5;
+        color: #7b1fa2;
+    }
+    .recommendation-type.matching {
+        background-color: #e8f5e9;
+        color: #388e3c;
+    }
+    .recommendation-info {
+        padding: 15px;
+    }
+    .recommendation-title {
+        font-size: 1.2rem;
+        margin-bottom: 10px;
+    }
+    .recommendation-details {
+        font-size: 0.9rem;
+        color: #666;
+    }
+    .recommendation-score {
+        display: inline-block;
+        padding: 3px 8px;
+        background: #f8f9fa;
+        border-radius: 12px;
+        margin-right: 10px;
+    }
+    .recommendation-actions {
+        padding: 10px 15px;
+        background: #f8f9fa;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .filter-section {
+        background: white;
+        padding: 20px;
+        border-radius: 15px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="display-4">{% trans "Рекомендации для вас" %}</h1>
+            <p class="lead">{% trans "Животные, которые могут вам понравиться" %}</p>
+        </div>
+    </div>
+    
+    <!-- Фильтры -->
+    <div class="filter-section">
+        <form method="get" class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">{% trans "Тип рекомендации" %}</label>
+                <select name="type" class="form-select">
+                    <option value="">{% trans "Все типы" %}</option>
+                    <option value="collaborative" {% if request.GET.type == 'collaborative' %}selected{% endif %}>
+                        {% trans "На основе похожих пользователей" %}
+                    </option>
+                    <option value="content_based" {% if request.GET.type == 'content_based' %}selected{% endif %}>
+                        {% trans "На основе ваших предпочтений" %}
+                    </option>
+                    <option value="matching" {% if request.GET.type == 'matching' %}selected{% endif %}>
+                        {% trans "По характеристикам" %}
+                    </option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">{% trans "Минимальный скор" %}</label>
+                <input type="number" name="min_score" class="form-control" 
+                       value="{{ request.GET.min_score }}" min="0" max="100" step="5">
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">
+                    {% trans "Применить фильтры" %}
+                </button>
+            </div>
+        </form>
+    </div>
+    
+    {% if recommendations %}
+    <div class="recommendations-grid">
+        {% for recommendation in recommendations %}
+        <div class="recommendation-card">
+            {% if recommendation.animal.announcement.images.exists %}
+            <img src="{{ recommendation.animal.announcement.images.first.image.url }}"
+                 class="recommendation-image"
+                 alt="{{ recommendation.animal.breed }}">
+            {% else %}
+            <img src="{% static 'images/no-image.jpg' %}"
+                 class="recommendation-image"
+                 alt="No image">
+            {% endif %}
+            
+            <div class="recommendation-type {{ recommendation.reason.type }}">
+                {% if recommendation.reason.type == 'collaborative' %}
+                    {% trans "Похожим пользователям понравилось" %}
+                {% elif recommendation.reason.type == 'content_based' %}
+                    {% trans "Похоже на ваши интересы" %}
+                {% else %}
+                    {% trans "Подходит по характеристикам" %}
+                {% endif %}
+            </div>
+            
+            <div class="recommendation-info">
+                <h5 class="recommendation-title">{{ recommendation.animal.breed }}</h5>
+                <div class="recommendation-details">
+                    <span class="recommendation-score">
+                        <i class="fas fa-star text-warning"></i>
+                        {{ recommendation.score|floatformat:0 }}%
+                    </span>
+                    <span>
+                        <i class="fas fa-venus-mars"></i>
+                        {{ recommendation.animal.get_gender_display }}
+                    </span>
+                    {% if recommendation.animal.age %}
+                    <span class="ms-2">
+                        <i class="fas fa-birthday-cake"></i>
+                        {{ recommendation.animal.age }} {% trans "лет" %}
+                    </span>
+                    {% endif %}
+                </div>
+                
+                {% if recommendation.reason.criteria %}
+                <div class="mt-2">
+                    <small class="text-muted">
+                        {% trans "Совпадения:" %}
+                        {% for criterion in recommendation.reason.criteria %}
+                        <span class="badge bg-light text-dark">{{ criterion }}</span>
+                        {% endfor %}
+                    </small>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="recommendation-actions">
+                <button class="btn btn-sm btn-outline-danger"
+                        onclick="recordInteraction('{{ recommendation.animal.id }}', 'dislike')">
+                    <i class="fas fa-times"></i>
+                    {% trans "Не интересует" %}
+                </button>
+                <button class="btn btn-sm btn-outline-success"
+                        onclick="recordInteraction('{{ recommendation.animal.id }}', 'like')">
+                    <i class="fas fa-heart"></i>
+                    {% trans "Нравится" %}
+                </button>
+                <a href="{{ recommendation.animal.announcement.get_absolute_url }}"
+                   class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-info-circle"></i>
+                    {% trans "Подробнее" %}
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    {% if recommendations.has_other_pages %}
+    <nav aria-label="{% trans 'Навигация по страницам' %}" class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if recommendations.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ recommendations.previous_page_number }}">
+                    {% trans "Назад" %}
+                </a>
+            </li>
+            {% endif %}
+            
+            {% for num in recommendations.paginator.page_range %}
+            <li class="page-item {% if recommendations.number == num %}active{% endif %}">
+                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+            </li>
+            {% endfor %}
+            
+            {% if recommendations.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ recommendations.next_page_number }}">
+                    {% trans "Вперед" %}
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+    
+    {% else %}
+    <div class="text-center py-5">
+        <h3>{% trans "Пока нет рекомендаций" %}</h3>
+        <p>{% trans "Начните взаимодействовать с объявлениями, чтобы получать персональные рекомендации" %}</p>
+        <a href="{% url 'announcements:list' %}" class="btn btn-primary">
+            {% trans "Перейти к объявлениям" %}
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    window.recordInteraction = function(animalId, type) {
+        fetch('{% url "matcher:record_interaction" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: `animal_id=${animalId}&type=${type}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Обновляем страницу для получения новых рекомендаций
+                location.reload();
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    };
+});
+</script>
+{% endblock %} 

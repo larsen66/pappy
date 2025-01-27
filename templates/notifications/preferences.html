@@ -1,0 +1,256 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% load static %}
+
+{% block title %}{% trans "Настройки уведомлений" %}{% endblock %}
+
+{% block extra_css %}
+<style>
+.preferences-card {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 2rem;
+    margin-bottom: 1.5rem;
+}
+
+.preferences-section {
+    margin-bottom: 2rem;
+}
+
+.preferences-section:last-child {
+    margin-bottom: 0;
+}
+
+.preferences-section h3 {
+    color: #2c3e50;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group:last-child {
+    margin-bottom: 0;
+}
+
+.help-text {
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
+}
+
+.form-check {
+    margin-bottom: 0.5rem;
+}
+
+.time-inputs {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.radius-input {
+    max-width: 150px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>{% trans "Настройки уведомлений" %}</h1>
+        <div>
+            <a href="{% url 'notifications:list' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> {% trans "К уведомлениям" %}
+            </a>
+        </div>
+    </div>
+
+    <form method="post" class="preferences-form">
+        {% csrf_token %}
+        
+        <!-- Основные настройки -->
+        <div class="preferences-card">
+            <div class="preferences-section">
+                <h3>{% trans "Основные настройки" %}</h3>
+                
+                <div class="form-group">
+                    <div class="form-check">
+                        {{ form.email_enabled }}
+                        <label class="form-check-label" for="{{ form.email_enabled.id_for_label }}">
+                            {% trans "Получать уведомления по email" %}
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="form-check">
+                        {{ form.push_enabled }}
+                        <label class="form-check-label" for="{{ form.push_enabled.id_for_label }}">
+                            {% trans "Получать push-уведомления" %}
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.email_frequency.id_for_label }}">
+                        {% trans "Частота email-уведомлений" %}
+                    </label>
+                    {{ form.email_frequency }}
+                    {% if form.email_frequency.help_text %}
+                        <div class="help-text">{{ form.email_frequency.help_text }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Период тишины -->
+            <div class="preferences-section">
+                <h3>{% trans "Период тишины" %}</h3>
+                <p class="text-muted mb-3">
+                    {% trans "В указанный период push-уведомления отправляться не будут" %}
+                </p>
+                
+                <div class="time-inputs">
+                    <div class="form-group">
+                        <label for="{{ form.quiet_hours_start.id_for_label }}">
+                            {% trans "Начало" %}
+                        </label>
+                        {{ form.quiet_hours_start }}
+                        {% if form.quiet_hours_start.help_text %}
+                            <div class="help-text">{{ form.quiet_hours_start.help_text }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group">
+                        <label for="{{ form.quiet_hours_end.id_for_label }}">
+                            {% trans "Конец" %}
+                        </label>
+                        {{ form.quiet_hours_end }}
+                        {% if form.quiet_hours_end.help_text %}
+                            <div class="help-text">{{ form.quiet_hours_end.help_text }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Типы уведомлений -->
+        <div class="preferences-card">
+            <div class="preferences-section">
+                <h3>{% trans "Типы уведомлений" %}</h3>
+                
+                <div class="form-group">
+                    <div class="form-check">
+                        {{ form.notify_new_matches }}
+                        <label class="form-check-label" for="{{ form.notify_new_matches.id_for_label }}">
+                            {% trans "Новые совпадения" %}
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="form-check">
+                        {{ form.notify_messages }}
+                        <label class="form-check-label" for="{{ form.notify_messages.id_for_label }}">
+                            {% trans "Новые сообщения" %}
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="form-check">
+                        {{ form.notify_status_updates }}
+                        <label class="form-check-label" for="{{ form.notify_status_updates.id_for_label }}">
+                            {% trans "Обновления статуса" %}
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Настройки для потерянных животных -->
+            <div class="preferences-section">
+                <h3>{% trans "Потерянные животные" %}</h3>
+                
+                <div class="form-group">
+                    <div class="form-check">
+                        {{ form.notify_lost_pets_enabled }}
+                        <label class="form-check-label" for="{{ form.notify_lost_pets_enabled.id_for_label }}">
+                            {% trans "Получать уведомления о потерянных животных" %}
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.notify_lost_pets_radius.id_for_label }}">
+                        {% trans "Радиус поиска (км)" %}
+                    </label>
+                    {{ form.notify_lost_pets_radius }}
+                    {% if form.notify_lost_pets_radius.help_text %}
+                        <div class="help-text">{{ form.notify_lost_pets_radius.help_text }}</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        {% if form.errors %}
+            <div class="alert alert-danger">
+                {% for field in form %}
+                    {% for error in field.errors %}
+                        <p>{{ field.label }}: {{ error }}</p>
+                    {% endfor %}
+                {% endfor %}
+                {% for error in form.non_field_errors %}
+                    <p>{{ error }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <div class="d-flex justify-content-end">
+            <button type="submit" class="btn btn-primary">
+                {% trans "Сохранить настройки" %}
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Обработка зависимостей полей
+    const emailEnabled = document.getElementById('{{ form.email_enabled.id_for_label }}');
+    const emailFrequency = document.getElementById('{{ form.email_frequency.id_for_label }}');
+    const pushEnabled = document.getElementById('{{ form.push_enabled.id_for_label }}');
+    const quietHoursStart = document.getElementById('{{ form.quiet_hours_start.id_for_label }}');
+    const quietHoursEnd = document.getElementById('{{ form.quiet_hours_end.id_for_label }}');
+    const lostPetsEnabled = document.getElementById('{{ form.notify_lost_pets_enabled.id_for_label }}');
+    const lostPetsRadius = document.getElementById('{{ form.notify_lost_pets_radius.id_for_label }}');
+
+    function updateFieldsVisibility() {
+        // Email frequency
+        emailFrequency.closest('.form-group').style.display = 
+            emailEnabled.checked ? 'block' : 'none';
+
+        // Quiet hours
+        const quietHoursContainer = quietHoursStart.closest('.preferences-section');
+        quietHoursContainer.style.display = pushEnabled.checked ? 'block' : 'none';
+
+        // Lost pets radius
+        lostPetsRadius.closest('.form-group').style.display = 
+            lostPetsEnabled.checked ? 'block' : 'none';
+    }
+
+    // Добавляем обработчики событий
+    [emailEnabled, pushEnabled, lostPetsEnabled].forEach(checkbox => {
+        checkbox.addEventListener('change', updateFieldsVisibility);
+    });
+
+    // Инициализация
+    updateFieldsVisibility();
+});
+</script>
+{% endblock %} 

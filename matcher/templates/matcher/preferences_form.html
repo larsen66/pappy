@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load crispy_forms_tags %}
+{% load static %}
+
+{% block title %}{% trans "Настройки поиска" %}{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'css/select2.min.css' %}" rel="stylesheet">
+<style>
+    .preferences-card {
+        border-radius: 15px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .form-section {
+        border-bottom: 1px solid #eee;
+        padding-bottom: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .form-section:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+        margin-bottom: 0;
+    }
+    .select2-container .select2-selection--multiple {
+        min-height: 38px;
+    }
+    .select2-container--default .select2-selection--multiple {
+        border: 1px solid #ced4da;
+        border-radius: 0.25rem;
+    }
+    .help-text {
+        font-size: 0.875rem;
+        color: #6c757d;
+        margin-top: 0.25rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="preferences-card card">
+                <div class="card-body">
+                    <h2 class="card-title mb-4">{% trans "Настройки поиска" %}</h2>
+                    
+                    <form method="post" id="preferences-form">
+                        {% csrf_token %}
+                        
+                        <!-- Основные предпочтения -->
+                        <div class="form-section">
+                            <h4 class="mb-3">{% trans "Основные предпочтения" %}</h4>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    {{ form.preferred_species|as_crispy_field }}
+                                    {{ form.preferred_breeds|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6">
+                                    {{ form.preferred_gender|as_crispy_field }}
+                                    <div class="row">
+                                        <div class="col-6">
+                                            {{ form.preferred_age_min|as_crispy_field }}
+                                        </div>
+                                        <div class="col-6">
+                                            {{ form.preferred_age_max|as_crispy_field }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Дополнительные характеристики -->
+                        <div class="form-section">
+                            <h4 class="mb-3">{% trans "Дополнительные характеристики" %}</h4>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    {{ form.size_preference|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6">
+                                    {{ form.color_preference|as_crispy_field }}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Специальные требования -->
+                        <div class="form-section">
+                            <h4 class="mb-3">{% trans "Специальные требования" %}</h4>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    {{ form.requires_pedigree|as_crispy_field }}
+                                </div>
+                                <div class="col-md-4">
+                                    {{ form.requires_vaccinated|as_crispy_field }}
+                                </div>
+                                <div class="col-md-4">
+                                    {{ form.requires_passport|as_crispy_field }}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Геолокация -->
+                        <div class="form-section">
+                            <h4 class="mb-3">{% trans "Геолокация" %}</h4>
+                            {{ form.max_distance|as_crispy_field }}
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                {% trans "Сохранить настройки" %}
+                            </button>
+                            <a href="{% url 'matcher:matches' %}" class="btn btn-outline-secondary">
+                                {% trans "Вернуться к поиску" %}
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/select2.min.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Инициализация Select2 для множественного выбора
+    $('.select2').select2({
+        theme: 'bootstrap4',
+        width: '100%'
+    });
+    
+    // Валидация возраста
+    const minAgeInput = document.getElementById('id_preferred_age_min');
+    const maxAgeInput = document.getElementById('id_preferred_age_max');
+    
+    function validateAge() {
+        const minAge = parseInt(minAgeInput.value);
+        const maxAge = parseInt(maxAgeInput.value);
+        
+        if (minAge && maxAge && minAge > maxAge) {
+            maxAgeInput.setCustomValidity('Максимальный возраст должен быть больше минимального');
+        } else {
+            maxAgeInput.setCustomValidity('');
+        }
+    }
+    
+    minAgeInput.addEventListener('change', validateAge);
+    maxAgeInput.addEventListener('change', validateAge);
+    
+    // Обновление списка пород при изменении вида животного
+    const speciesSelect = document.getElementById('id_preferred_species');
+    const breedSelect = document.getElementById('id_preferred_breeds');
+    
+    speciesSelect.addEventListener('change', function() {
+        const selectedSpecies = $(speciesSelect).val();
+        
+        // Очищаем текущие опции
+        $(breedSelect).empty();
+        
+        if (selectedSpecies && selectedSpecies.length > 0) {
+            // Загружаем породы для выбранных видов
+            fetch(`/api/breeds/?species=${selectedSpecies.join(',')}`)
+                .then(response => response.json())
+                .then(data => {
+                    data.forEach(breed => {
+                        const option = new Option(breed.name, breed.id);
+                        $(breedSelect).append(option);
+                    });
+                    $(breedSelect).trigger('change');
+                });
+        }
+    });
+});
+</script>
+{% endblock %} 
