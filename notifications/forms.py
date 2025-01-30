@@ -8,21 +8,25 @@ class NotificationPreferenceForm(forms.ModelForm):
     class Meta:
         model = NotificationPreference
         fields = [
-            'email_enabled',
-            'push_enabled',
+            'email_new_matches',
+            'email_new_messages',
+            'email_status_updates',
+            'email_recommendations',
+            'email_lost_pets',
+            'push_new_matches',
+            'push_new_messages',
+            'push_status_updates',
+            'push_recommendations',
+            'push_lost_pets',
             'email_frequency',
             'quiet_hours_start',
             'quiet_hours_end',
-            'notify_new_matches',
-            'notify_messages',
-            'notify_status_updates',
-            'notify_lost_pets_radius',
-            'notify_lost_pets_enabled',
+            'lost_pets_radius',
         ]
         widgets = {
             'quiet_hours_start': forms.TimeInput(attrs={'type': 'time'}),
             'quiet_hours_end': forms.TimeInput(attrs={'type': 'time'}),
-            'notify_lost_pets_radius': forms.NumberInput(attrs={
+            'lost_pets_radius': forms.NumberInput(attrs={
                 'min': 0,
                 'max': 100,
                 'step': 1
@@ -32,16 +36,32 @@ class NotificationPreferenceForm(forms.ModelForm):
             'email_frequency': _('Как часто отправлять email-уведомления'),
             'quiet_hours_start': _('Начало периода тишины (push-уведомления не будут отправляться)'),
             'quiet_hours_end': _('Конец периода тишины'),
-            'notify_lost_pets_radius': _('Радиус в километрах для уведомлений о потерянных животных поблизости'),
+            'lost_pets_radius': _('Радиус в километрах для уведомлений о потерянных животных поблизости'),
         }
     
     def clean(self):
         cleaned_data = super().clean()
         
-        # Проверяем, что хотя бы один тип уведомлений включен
-        if not cleaned_data.get('email_enabled') and not cleaned_data.get('push_enabled'):
+        # Проверяем, что хотя бы один тип уведомлений включен для каждой категории
+        email_notifications = any([
+            cleaned_data.get('email_new_matches'),
+            cleaned_data.get('email_new_messages'),
+            cleaned_data.get('email_status_updates'),
+            cleaned_data.get('email_recommendations'),
+            cleaned_data.get('email_lost_pets'),
+        ])
+        
+        push_notifications = any([
+            cleaned_data.get('push_new_matches'),
+            cleaned_data.get('push_new_messages'),
+            cleaned_data.get('push_status_updates'),
+            cleaned_data.get('push_recommendations'),
+            cleaned_data.get('push_lost_pets'),
+        ])
+        
+        if not email_notifications and not push_notifications:
             raise forms.ValidationError(
-                _('Необходимо включить хотя бы один тип уведомлений (email или push)')
+                _('Необходимо включить хотя бы один тип уведомлений')
             )
         
         # Проверяем корректность периода тишины
@@ -53,7 +73,7 @@ class NotificationPreferenceForm(forms.ModelForm):
             )
         
         # Проверяем радиус для уведомлений о потерянных животных
-        radius = cleaned_data.get('notify_lost_pets_radius')
+        radius = cleaned_data.get('lost_pets_radius')
         if radius is not None and radius < 0:
             raise forms.ValidationError(
                 _('Радиус не может быть отрицательным')

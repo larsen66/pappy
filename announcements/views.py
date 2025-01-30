@@ -28,182 +28,98 @@ from .forms import (
 )
 from .filters import AnnouncementFilter
 from django.conf import settings
+from math import radians, sin, cos, sqrt, atan2
+
+def calculate_distance(lat1, lon1, lat2, lon2):
+    R = 6371  # радиус Земли в километрах
+
+    lat1, lon1, lat2, lon2 = map(radians, [float(lat1), float(lon1), float(lat2), float(lon2)])
+    
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    
+    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+    c = 2 * atan2(sqrt(a), sqrt(1-a))
+    distance = R * c
+    
+    return distance
 
 def announcement_list(request):
-    # Базовый queryset
-    announcements = Announcement.objects.filter(status=Announcement.STATUS_ACTIVE)
+    announcements = Announcement.objects.filter(is_active=True)
     
     # Применяем фильтры
-    announcement_filter = AnnouncementFilter(request.GET, queryset=announcements)
-    announcements = announcement_filter.qs
-    
-    # Сортировка
-    sort_by = request.GET.get('sort')
-    if sort_by:
-        if sort_by == 'price_asc':
-            announcements = announcements.order_by('price')
-        elif sort_by == 'price_desc':
-            announcements = announcements.order_by('-price')
-        elif sort_by == 'date_desc':
-            announcements = announcements.order_by('-created_at')
-        elif sort_by == 'date_asc':
-            announcements = announcements.order_by('created_at')
-        elif sort_by == 'popular':
-            announcements = announcements.annotate(
-                avg_rating=Avg('reviews__rating'),
-                view_count=Count('views')
-            ).order_by('-avg_rating', '-view_count')
-    else:
-        # По умолчанию сортируем по дате создания (сначала новые)
-        announcements = announcements.order_by('-created_at')
-    
-    # Поиск по параметрам
-    search_form = AnnouncementSearchForm(request.GET)
-    if search_form.is_valid():
-        search_query = search_form.cleaned_data.get('query')
-        if search_query:
-            announcements = announcements.filter(
-                Q(title__icontains=search_query) |
-                Q(description__icontains=search_query) |
-                Q(animalannouncement__breed__icontains=search_query) |
-                Q(serviceannouncement__service_type__icontains=search_query) |
-                Q(location__icontains=search_query)
-            ).distinct()
+    filter = AnnouncementFilter(request.GET, queryset=announcements)
+    announcements = filter.qs
     
     # Пагинация
     paginator = Paginator(announcements, 12)
     page = request.GET.get('page')
     announcements = paginator.get_page(page)
     
-    # Получаем все категории для фильтров
-    categories = AnnouncementCategory.objects.all()
-    
     context = {
         'announcements': announcements,
-        'filter': announcement_filter,
-        'form': search_form,
-        'categories': categories,
-        'current_sort': sort_by,
+        'filter': filter,
     }
-    
     return render(request, 'announcements/announcement_list.html', context)
 
 @login_required
 def announcement_create(request):
     if request.method == 'POST':
         announcement_form = AnnouncementForm(request.POST)
-        image_form = AnnouncementImageForm(request.POST, request.FILES)
+        animal_form = AnimalAnnouncementForm(request.POST)
         
-        type_form = None
-        announcement_type = request.POST.get('type')
-        
-        if announcement_type == Announcement.TYPE_ANIMAL:
-            type_form = AnimalAnnouncementForm(request.POST)
-        elif announcement_type == Announcement.TYPE_SERVICE:
-            type_form = ServiceAnnouncementForm(request.POST)
-        elif announcement_type == Announcement.TYPE_MATING:
-            type_form = MatingAnnouncementForm(request.POST)
-        elif announcement_type == Announcement.TYPE_LOST_FOUND:
-            type_form = LostFoundAnnouncementForm(request.POST)
-        
-        if announcement_form.is_valid() and type_form and type_form.is_valid() and image_form.is_valid():
+        if announcement_form.is_valid() and animal_form.is_valid():
             announcement = announcement_form.save(commit=False)
             announcement.author = request.user
             announcement.save()
             
-            type_instance = type_form.save(commit=False)
-            type_instance.announcement = announcement
-            type_instance.save()
+            animal = animal_form.save(commit=False)
+            animal.announcement = announcement
+            animal.save()
             
-            if image_form.cleaned_data.get('image'):
-                image = image_form.save(commit=False)
-                image.announcement = announcement
-                image.save()
-            
-            messages.success(request, _('Объявление успешно создано'))
-            return redirect('announcements:detail', pk=announcement.pk)
+            messages.success(request, 'Объявление успешно создано!')
+            return redirect('announcements:announcement_detail', pk=announcement.pk)
     else:
         announcement_form = AnnouncementForm()
-        image_form = AnnouncementImageForm()
+        animal_form = AnimalAnnouncementForm()
     
-    return render(request, 'announcements/announcement_form.html', {
+    context = {
         'announcement_form': announcement_form,
-        'image_form': image_form,
-        'animal_form': AnimalAnnouncementForm(),
-        'service_form': ServiceAnnouncementForm(),
-        'mating_form': MatingAnnouncementForm(),
-        'lost_found_form': LostFoundAnnouncementForm(),
-    })
+        'animal_form': animal_form,
+    }
+    return render(request, 'announcements/announcement_form.html', context)
 
 def announcement_detail(request, pk):
     announcement = get_object_or_404(Announcement, pk=pk)
-    announcement.views_count += 1
-    announcement.save()
-    
-    type_details = None
-    if announcement.type == Announcement.TYPE_ANIMAL:
-        type_details = announcement.animal_details
-    elif announcement.type == Announcement.TYPE_SERVICE:
-        type_details = announcement.service_details
-    elif announcement.type == Announcement.TYPE_MATING:
-        type_details = announcement.mating_details
-    elif announcement.type == Announcement.TYPE_LOST_FOUND:
-        type_details = announcement.lost_found_details
-    
-    return render(request, 'announcements/announcement_detail.html', {
+    context = {
         'announcement': announcement,
-        'type_details': type_details,
-    })
+    }
+    return render(request, 'announcements/announcement_detail.html', context)
 
 @login_required
-def announcement_edit(request, pk):
+def announcement_update(request, pk):
     announcement = get_object_or_404(Announcement, pk=pk, author=request.user)
+    animal = announcement.animal_details
     
     if request.method == 'POST':
         announcement_form = AnnouncementForm(request.POST, instance=announcement)
-        image_form = AnnouncementImageForm(request.POST, request.FILES)
+        animal_form = AnimalAnnouncementForm(request.POST, instance=animal)
         
-        type_form = None
-        if announcement.type == Announcement.TYPE_ANIMAL:
-            type_form = AnimalAnnouncementForm(request.POST, instance=announcement.animal_details)
-        elif announcement.type == Announcement.TYPE_SERVICE:
-            type_form = ServiceAnnouncementForm(request.POST, instance=announcement.service_details)
-        elif announcement.type == Announcement.TYPE_MATING:
-            type_form = MatingAnnouncementForm(request.POST, instance=announcement.mating_details)
-        elif announcement.type == Announcement.TYPE_LOST_FOUND:
-            type_form = LostFoundAnnouncementForm(request.POST, instance=announcement.lost_found_details)
-        
-        if announcement_form.is_valid() and type_form and type_form.is_valid():
-            announcement = announcement_form.save()
-            type_form.save()
-            
-            if image_form.is_valid() and image_form.cleaned_data.get('image'):
-                image = image_form.save(commit=False)
-                image.announcement = announcement
-                image.save()
-            
-            messages.success(request, _('Объявление успешно обновлено'))
-            return redirect('announcements:detail', pk=announcement.pk)
+        if announcement_form.is_valid() and animal_form.is_valid():
+            announcement_form.save()
+            animal_form.save()
+            messages.success(request, 'Объявление успешно обновлено!')
+            return redirect('announcements:announcement_detail', pk=announcement.pk)
     else:
         announcement_form = AnnouncementForm(instance=announcement)
-        image_form = AnnouncementImageForm()
-        
-        type_form = None
-        if announcement.type == Announcement.TYPE_ANIMAL:
-            type_form = AnimalAnnouncementForm(instance=announcement.animal_details)
-        elif announcement.type == Announcement.TYPE_SERVICE:
-            type_form = ServiceAnnouncementForm(instance=announcement.service_details)
-        elif announcement.type == Announcement.TYPE_MATING:
-            type_form = MatingAnnouncementForm(instance=announcement.mating_details)
-        elif announcement.type == Announcement.TYPE_LOST_FOUND:
-            type_form = LostFoundAnnouncementForm(instance=announcement.lost_found_details)
+        animal_form = AnimalAnnouncementForm(instance=animal)
     
-    return render(request, 'announcements/announcement_form.html', {
+    context = {
         'announcement_form': announcement_form,
-        'image_form': image_form,
-        'type_form': type_form,
+        'animal_form': animal_form,
         'announcement': announcement,
-    })
+    }
+    return render(request, 'announcements/announcement_form.html', context)
 
 @login_required
 def announcement_delete(request, pk):
@@ -211,12 +127,42 @@ def announcement_delete(request, pk):
     
     if request.method == 'POST':
         announcement.delete()
-        messages.success(request, _('Объявление успешно удалено'))
-        return redirect('announcements:list')
+        messages.success(request, 'Объявление успешно удалено!')
+        return redirect('announcements:announcement_list')
     
-    return render(request, 'announcements/announcement_confirm_delete.html', {
+    context = {
         'announcement': announcement,
-    })
+    }
+    return render(request, 'announcements/announcement_confirm_delete.html', context)
+
+def search_nearby(request):
+    lat = request.GET.get('latitude')
+    lon = request.GET.get('longitude')
+    radius = request.GET.get('radius', 10)  # радиус поиска в километрах
+    
+    if not (lat and lon):
+        messages.error(request, 'Необходимо указать координаты для поиска!')
+        return redirect('announcements:announcement_list')
+    
+    announcements = Announcement.objects.filter(is_active=True)
+    nearby_announcements = []
+    
+    for announcement in announcements:
+        if announcement.latitude and announcement.longitude:
+            distance = calculate_distance(
+                float(lat), float(lon),
+                float(announcement.latitude), float(announcement.longitude)
+            )
+            if distance <= float(radius):
+                nearby_announcements.append(announcement)
+    
+    context = {
+        'announcements': nearby_announcements,
+        'latitude': lat,
+        'longitude': lon,
+        'radius': radius,
+    }
+    return render(request, 'announcements/nearby_announcements.html', context)
 
 @login_required
 def my_announcements(request):

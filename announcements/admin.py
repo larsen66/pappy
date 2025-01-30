@@ -44,8 +44,9 @@ class ServiceAnnouncementAdmin(admin.ModelAdmin):
 
 @admin.register(MatingAnnouncement)
 class MatingAnnouncementAdmin(admin.ModelAdmin):
-    list_display = ('announcement', 'requirements')
-    search_fields = ('announcement__title', 'requirements')
+    list_display = ('announcement', 'animal', 'partner_requirements', 'is_available')
+    list_filter = ('is_available', 'has_medical_exam')
+    search_fields = ('announcement__title', 'partner_requirements', 'animal__breed')
 
 @admin.register(LostFoundAnnouncement)
 class LostFoundAnnouncementAdmin(admin.ModelAdmin):

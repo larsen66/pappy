@@ -5,8 +5,9 @@ from django.utils import timezone
 from datetime import timedelta
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
-from .models import UserPreferences, MatchingScore, UserInteraction, RecommendationHistory
-from announcements.models import AnimalAnnouncement
+from .models import UserPreferences, MatchingScore, UserInteraction, RecommendationHistory, Match
+from announcements.models import AnimalAnnouncement, Announcement
+from math import radians, sin, cos, sqrt, atan2
 
 class MatchingService:
     """Сервис для умного подбора животных"""
@@ -258,4 +259,75 @@ def update_matching_scores():
     for user_dict in active_users:
         matching_service = MatchingService(user_dict['user'])
         matches = matching_service.get_matches()
-        matching_service.save_matches(matches) 
+        matching_service.save_matches(matches)
+
+def calculate_distance(lat1, lon1, lat2, lon2):
+    R = 6371  # радиус Земли в километрах
+
+    lat1, lon1, lat2, lon2 = map(radians, [float(lat1), float(lon1), float(lat2), float(lon2)])
+    
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    
+    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+    c = 2 * atan2(sqrt(a), sqrt(1-a))
+    distance = R * c
+    
+    return distance
+
+def find_matches(user, preferences):
+    """
+    Находит объявления, соответствующие предпочтениям пользователя
+    """
+    # Базовый запрос
+    announcements = Announcement.objects.filter(is_active=True)
+    
+    # Фильтрация по виду животного
+    if preferences.get('species'):
+        announcements = announcements.filter(
+            animal_details__species__in=preferences['species']
+        )
+    
+    # Фильтрация по породе
+    if preferences.get('breeds'):
+        announcements = announcements.filter(
+            animal_details__breed__in=preferences['breeds']
+        )
+    
+    # Фильтрация по размеру
+    if preferences.get('size'):
+        announcements = announcements.filter(
+            animal_details__size__in=preferences['size']
+        )
+    
+    # Фильтрация по цвету
+    if preferences.get('color'):
+        announcements = announcements.filter(
+            animal_details__color__in=preferences['color']
+        )
+    
+    # Фильтрация по местоположению
+    if preferences.get('location'):
+        lat = preferences['location'].get('latitude')
+        lon = preferences['location'].get('longitude')
+        radius = preferences.get('radius', 10)  # радиус поиска в километрах
+        
+        if lat and lon:
+            filtered_announcements = []
+            for announcement in announcements:
+                if announcement.latitude and announcement.longitude:
+                    distance = calculate_distance(
+                        float(lat), float(lon),
+                        float(announcement.latitude), float(announcement.longitude)
+                    )
+                    if distance <= float(radius):
+                        filtered_announcements.append(announcement.id)
+            
+            announcements = announcements.filter(id__in=filtered_announcements)
+    
+    # Создаем или обновляем запись о совпадениях
+    match, created = Match.objects.get_or_create(user=user)
+    match.set_matched_announcements([a.id for a in announcements])
+    match.save()
+    
+    return announcements 

@@ -1,6 +1,5 @@
 from django import forms
 from django.utils.translation import gettext_lazy as _
-from django.contrib.gis.geos import Point
 from .models import (
     Announcement,
     AnnouncementCategory,
@@ -14,18 +13,37 @@ from .models import (
 
 class AnnouncementForm(forms.ModelForm):
     """Base form for all announcements"""
+    latitude = forms.DecimalField(max_digits=9, decimal_places=6, required=False)
+    longitude = forms.DecimalField(max_digits=9, decimal_places=6, required=False)
+    address = forms.CharField(max_length=255, required=False)
+
     class Meta:
         model = Announcement
-        fields = ['title', 'description', 'category', 'type', 'price', 'location']
+        fields = ['title', 'description', 'category', 'type', 'price', 'address', 'latitude', 'longitude', 'images']
         widgets = {
-            'description': forms.Textarea(attrs={'rows': 5}),
+            'description': forms.Textarea(attrs={'rows': 4}),
         }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        latitude = cleaned_data.get('latitude')
+        longitude = cleaned_data.get('longitude')
+
+        if (latitude and not longitude) or (longitude and not latitude):
+            raise forms.ValidationError('Необходимо указать обе координаты')
+
+        return cleaned_data
 
 class AnimalAnnouncementForm(forms.ModelForm):
     class Meta:
         model = AnimalAnnouncement
-        fields = ['species', 'breed', 'age', 'gender', 'size', 'color',
-                 'pedigree', 'vaccinated', 'passport', 'microchipped']
+        fields = [
+            'species', 'breed', 'age', 'gender', 'size', 'color',
+            'pedigree', 'vaccinated', 'passport', 'microchipped'
+        ]
+        widgets = {
+            'age': forms.NumberInput(attrs={'min': 0}),
+        }
 
 class ServiceAnnouncementForm(forms.ModelForm):
     class Meta:
@@ -53,15 +71,15 @@ class MatingAnnouncementForm(forms.ModelForm):
         ]
         widgets = {
             'medical_exam_date': forms.DateInput(attrs={'type': 'date'}),
-            'vaccinations': forms.JSONInput(),
-            'genetic_tests': forms.JSONInput(),
+            'vaccinations': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Введите в формате JSON'}),
+            'genetic_tests': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Введите в формате JSON'}),
             'titles': forms.TextInput(attrs={'placeholder': 'Введите титулы через запятую'}),
             'achievements': forms.Textarea(attrs={'rows': 3}),
-            'show_participation': forms.JSONInput(),
+            'show_participation': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Введите в формате JSON'}),
             'partner_requirements': forms.Textarea(attrs={'rows': 3}),
             'preferred_breeds': forms.TextInput(attrs={'placeholder': 'Введите породы через запятую'}),
-            'required_medical_tests': forms.JSONInput(),
-            'required_titles': forms.JSONInput(),
+            'required_medical_tests': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Введите в формате JSON'}),
+            'required_titles': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Введите в формате JSON'}),
             'mating_conditions': forms.Textarea(attrs={'rows': 3}),
         }
     
@@ -130,7 +148,9 @@ class AnnouncementSearchForm(forms.Form):
         max_price = cleaned_data.get('max_price')
         
         if min_price and max_price and min_price > max_price:
-            raise forms.ValidationError(_('Минимальная цена не может быть больше максимальной')) 
+            raise forms.ValidationError(_('Минимальная цена не может быть больше максимальной'))
+        
+        return cleaned_data
 
 class LostPetForm(forms.ModelForm):
     latitude = forms.FloatField(widget=forms.HiddenInput())
@@ -141,7 +161,7 @@ class LostPetForm(forms.ModelForm):
         fields = [
             'status', 'date_lost_found', 'pet_type', 'breed', 'color',
             'age', 'distinctive_features', 'has_collar', 'has_chip',
-            'chip_number', 'last_seen_address', 'search_radius',
+            'chip_number', 'last_seen_location', 'search_radius',
             'contact_name', 'contact_phone', 'contact_email', 'reward_offered'
         ]
         widgets = {
@@ -159,7 +179,7 @@ class LostPetForm(forms.ModelForm):
         lon = cleaned_data.get('longitude')
         
         if lat and lon:
-            cleaned_data['last_seen_location'] = Point(lon, lat)
+            cleaned_data['last_seen_location'] = (lon, lat)
         else:
             raise forms.ValidationError(_('Необходимо указать местоположение на карте'))
         
@@ -167,7 +187,7 @@ class LostPetForm(forms.ModelForm):
     
     def save(self, commit=True):
         instance = super().save(commit=False)
-        instance.last_seen_location = Point(
+        instance.last_seen_location = (
             self.cleaned_data['longitude'],
             self.cleaned_data['latitude']
         )

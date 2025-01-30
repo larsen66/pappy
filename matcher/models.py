@@ -1,7 +1,7 @@
 from django.db import models
 from django.conf import settings
 from django.utils.translation import gettext_lazy as _
-from django.contrib.postgres.fields import ArrayField
+import json
 from announcements.models import AnimalAnnouncement
 
 class UserPreferences(models.Model):
@@ -11,13 +11,11 @@ class UserPreferences(models.Model):
                               related_name='matching_preferences')
     
     # Основные предпочтения
-    preferred_species = ArrayField(
-        models.CharField(max_length=100),
+    preferred_species = models.TextField(
         verbose_name=_('Предпочитаемые виды животных'),
         null=True, blank=True
     )
-    preferred_breeds = ArrayField(
-        models.CharField(max_length=100),
+    preferred_breeds = models.TextField(
         verbose_name=_('Предпочитаемые породы'),
         null=True, blank=True
     )
@@ -26,13 +24,11 @@ class UserPreferences(models.Model):
     preferred_gender = models.CharField(_('Предпочитаемый пол'), max_length=10, null=True, blank=True)
     
     # Дополнительные характеристики
-    size_preference = ArrayField(
-        models.CharField(max_length=20),
+    size_preference = models.TextField(
         verbose_name=_('Предпочитаемые размеры'),
         null=True, blank=True
     )
-    color_preference = ArrayField(
-        models.CharField(max_length=50),
+    color_preference = models.TextField(
         verbose_name=_('Предпочитаемые окрасы'),
         null=True, blank=True
     )
@@ -125,4 +121,21 @@ class RecommendationHistory(models.Model):
         indexes = [
             models.Index(fields=['user', '-shown_at']),
             models.Index(fields=['-score']),
-        ] 
+        ]
+
+class Match(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='matches')
+    matched_announcements = models.TextField(default='[]')  # JSON строка для хранения ID объявлений
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def get_matched_announcements(self):
+        return json.loads(self.matched_announcements)
+
+    def set_matched_announcements(self, announcements_list):
+        self.matched_announcements = json.dumps(announcements_list)
+
+    class Meta:
+        verbose_name = 'Совпадение'
+        verbose_name_plural = 'Совпадения'
+        ordering = ['-created_at'] 

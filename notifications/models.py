@@ -84,8 +84,8 @@ class Notification(models.Model):
     message = models.TextField(_('Сообщение'))
     
     # Связь с объектом уведомления (например, объявление или сообщение)
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    object_id = models.PositiveIntegerField()
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True, blank=True)
+    object_id = models.PositiveIntegerField(null=True, blank=True)
     content_object = GenericForeignKey('content_type', 'object_id')
     
     # Метаданные

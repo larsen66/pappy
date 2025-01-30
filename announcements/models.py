@@ -4,32 +4,25 @@ from django.utils.translation import gettext_lazy as _
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils.text import slugify
 from unidecode import unidecode
-from django.contrib.postgres.fields import ArrayField
-from django.contrib.gis.db import models as gis_models
-from django.contrib.gis.geos import Point
-from django.utils import timezone
-from django.contrib.gis.geos import Distance
 from django.core.exceptions import ValidationError
+from django.utils import timezone
+import json
 
 class AnnouncementCategory(models.Model):
     name = models.CharField(_('Название'), max_length=100)
-    slug = models.SlugField(_('Slug'), max_length=100, unique=True)
+    slug = models.SlugField(_('Слаг'), unique=True)
+    description = models.TextField(_('Описание'), blank=True)
     parent = models.ForeignKey('self', verbose_name=_('Родительская категория'),
                              on_delete=models.CASCADE, null=True, blank=True,
                              related_name='children')
     
     class Meta:
-        verbose_name = _('Категория')
-        verbose_name_plural = _('Категории')
+        verbose_name = _('Категория объявления')
+        verbose_name_plural = _('Категории объявлений')
         ordering = ['name']
-        
+
     def __str__(self):
         return self.name
-
-    def save(self, *args, **kwargs):
-        if not self.slug:
-            self.slug = slugify(unidecode(self.name))
-        super().save(*args, **kwargs)
 
 class Announcement(models.Model):
     TYPE_ANIMAL = 'animal'
@@ -72,24 +65,42 @@ class Announcement(models.Model):
     updated_at = models.DateTimeField(_('Обновлено'), auto_now=True)
     views_count = models.PositiveIntegerField(_('Просмотры'), default=0)
     is_premium = models.BooleanField(_('Премиум'), default=False)
+    is_active = models.BooleanField(_('Активно'), default=True)
     
     # Геолокация
-    location = models.CharField(_('Местоположение'), max_length=200, null=True, blank=True)
+    address = models.CharField(_('адрес'), max_length=255, null=True, blank=True)
     latitude = models.DecimalField(_('широта'), max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(_('долгота'), max_digits=9, decimal_places=6, null=True, blank=True)
+    
+    # Изображения
+    images = models.TextField(_('Изображения'), default='[]')  # JSON строка для хранения списка URL изображений
     
     class Meta:
         verbose_name = _('Объявление')
         verbose_name_plural = _('Объявления')
         ordering = ['-created_at']
         indexes = [
-            models.Index(fields=['type', 'status']),
+            models.Index(fields=['created_at']),
             models.Index(fields=['category']),
             models.Index(fields=['author']),
+            models.Index(fields=['is_premium']),
+            models.Index(fields=['is_active']),
         ]
 
     def __str__(self):
         return self.title
+
+    def get_images(self):
+        return json.loads(self.images)
+
+    def set_images(self, images_list):
+        self.images = json.dumps(images_list)
+
+    def clean(self):
+        if self.latitude and not self.longitude:
+            raise ValidationError(_('Необходимо указать обе координаты'))
+        if self.longitude and not self.latitude:
+            raise ValidationError(_('Необходимо указать обе координаты'))
 
 class AnimalAnnouncement(models.Model):
     GENDER_MALE = 'male'
@@ -110,16 +121,20 @@ class AnimalAnnouncement(models.Model):
         (SIZE_LARGE, _('Большой')),
     ]
 
-    announcement = models.OneToOneField(Announcement, verbose_name=_('Объявление'),
-                                      on_delete=models.CASCADE, related_name='animal_details')
+    announcement = models.OneToOneField(
+        Announcement,
+        on_delete=models.CASCADE,
+        primary_key=True,
+        related_name='animal_details'
+    )
     
     # Характеристики животного
-    species = models.CharField(_('Вид'), max_length=100)
+    species = models.CharField(_('Вид животного'), max_length=100)
     breed = models.CharField(_('Порода'), max_length=100, blank=True)
     age = models.PositiveIntegerField(_('Возраст'), null=True, blank=True)
     gender = models.CharField(_('Пол'), max_length=10, choices=GENDER_CHOICES)
-    size = models.CharField(_('Размер'), max_length=10, choices=SIZE_CHOICES)
-    color = models.CharField(_('Окрас'), max_length=100)
+    size = models.CharField(_('Размер'), max_length=20, choices=SIZE_CHOICES)
+    color = models.CharField(_('Окрас'), max_length=50)
     
     # Дополнительные характеристики
     pedigree = models.BooleanField(_('Родословная'), default=False)
@@ -130,6 +145,9 @@ class AnimalAnnouncement(models.Model):
     class Meta:
         verbose_name = _('Объявление о животном')
         verbose_name_plural = _('Объявления о животных')
+
+    def __str__(self):
+        return f"{self.species} - {self.announcement.title}"
 
 class ServiceAnnouncement(models.Model):
     SERVICE_TYPE_WALKING = 'walking'
@@ -163,8 +181,9 @@ class MatingAnnouncement(models.Model):
                                       on_delete=models.CASCADE, related_name='mating_details')
     
     # Характеристики животного
-    animal = models.OneToOneField(AnimalAnnouncement, verbose_name=_('Животное'),
-                                on_delete=models.CASCADE, related_name='mating_profile')
+    animal = models.ForeignKey(AnimalAnnouncement, verbose_name=_('Животное'),
+                             on_delete=models.CASCADE, related_name='mating_profiles',
+                             null=True, blank=True)
     
     # Медицинские документы
     has_medical_exam = models.BooleanField(_('Пройден медосмотр'), default=False)
@@ -174,29 +193,21 @@ class MatingAnnouncement(models.Model):
     medical_documents = models.FileField(_('Медицинские документы'), upload_to='mating/medical_docs/', null=True, blank=True)
     
     # Достижения и титулы
-    titles = ArrayField(
-        models.CharField(max_length=100),
-        verbose_name=_('Титулы'),
-        null=True, blank=True
-    )
+    titles = models.TextField(_('Титулы'), default='[]')  # JSON строка для хранения списка титулов
     achievements = models.TextField(_('Достижения'), blank=True)
     show_participation = models.JSONField(_('Участие в выставках'), null=True, blank=True)
     
     # Требования к партнеру
-    partner_requirements = models.TextField(_('Требования к партнеру'))
-    preferred_breeds = ArrayField(
-        models.CharField(max_length=100),
-        verbose_name=_('Предпочтительные породы'),
-        null=True, blank=True
-    )
+    partner_requirements = models.TextField(_('Требования к партнеру'), null=True, blank=True)
+    preferred_breeds = models.TextField(_('Предпочтительные породы'), default='[]')  # JSON строка для хранения списка пород
     min_partner_age = models.PositiveIntegerField(_('Минимальный возраст партнера'), null=True, blank=True)
     max_partner_age = models.PositiveIntegerField(_('Максимальный возраст партнера'), null=True, blank=True)
     required_medical_tests = models.JSONField(_('Требуемые медицинские тесты'), null=True, blank=True)
     required_titles = models.JSONField(_('Требуемые титулы'), null=True, blank=True)
     
     # Условия вязки
-    mating_conditions = models.TextField(_('Условия вязки'))
-    price_policy = models.CharField(_('Ценовая политика'), max_length=100)
+    mating_conditions = models.TextField(_('Условия вязки'), null=True, blank=True)
+    price_policy = models.CharField(_('Ценовая политика'), max_length=100, null=True, blank=True)
     contract_required = models.BooleanField(_('Требуется контракт'), default=True)
     
     # Статистика и метаданные
@@ -213,34 +224,28 @@ class MatingAnnouncement(models.Model):
         ]
     
     def __str__(self):
-        return f"Вязка: {self.animal.breed} ({self.animal.gender})"
+        return f"Вязка: {self.animal.breed if self.animal else 'Без животного'} ({self.animal.gender if self.animal else '-'})"
     
     def clean(self):
         super().clean()
-        if self.animal.gender not in [AnimalAnnouncement.GENDER_MALE, AnimalAnnouncement.GENDER_FEMALE]:
-            raise ValidationError(_('Необходимо указать пол животного'))
-        
-        if self.medical_exam_date and self.medical_exam_date > timezone.now().date():
-            raise ValidationError(_('Дата медосмотра не может быть в будущем'))
+        if self.animal:
+            if self.animal.gender not in [AnimalAnnouncement.GENDER_MALE, AnimalAnnouncement.GENDER_FEMALE]:
+                raise ValidationError(_('Необходимо указать пол животного'))
+            
+            if self.medical_exam_date and self.medical_exam_date > timezone.now().date():
+                raise ValidationError(_('Дата медосмотра не может быть в будущем'))
     
-    def get_matching_partners(self):
-        """Поиск подходящих партнеров для вязки"""
-        base_query = MatingAnnouncement.objects.filter(
-            is_available=True,
-            animal__species=self.animal.species,
-            animal__gender=AnimalAnnouncement.GENDER_MALE if self.animal.gender == AnimalAnnouncement.GENDER_FEMALE else AnimalAnnouncement.GENDER_FEMALE
-        ).exclude(id=self.id)
-        
-        if self.preferred_breeds:
-            base_query = base_query.filter(animal__breed__in=self.preferred_breeds)
-        
-        if self.min_partner_age:
-            base_query = base_query.filter(animal__age__gte=self.min_partner_age)
-        
-        if self.max_partner_age:
-            base_query = base_query.filter(animal__age__lte=self.max_partner_age)
-        
-        return base_query
+    def get_titles(self):
+        return json.loads(self.titles)
+    
+    def set_titles(self, titles_list):
+        self.titles = json.dumps(titles_list)
+    
+    def get_preferred_breeds(self):
+        return json.loads(self.preferred_breeds)
+    
+    def set_preferred_breeds(self, breeds_list):
+        self.preferred_breeds = json.dumps(breeds_list)
 
 class LostFoundAnnouncement(models.Model):
     TYPE_LOST = 'lost'
@@ -291,7 +296,7 @@ class LostFoundAnnouncement(models.Model):
         null=True,
         blank=True
     )
-    size = models.CharField(_('Размер'), max_length=20, choices=SIZE_CHOICES)
+    size = models.CharField(_('Размер'), max_length=20, choices=SIZE_CHOICES, default='medium')
     distinctive_features = models.TextField(_('Отличительные черты'))
     
     # Location fields
@@ -316,7 +321,7 @@ class LostFoundAnnouncement(models.Model):
         blank=True
     )
     
-    # Additional features using PostgreSQL arrays and JSONB
+    # Additional features
     color_pattern = models.CharField(_('Тип окраса'), max_length=50, blank=True)
     microchipped = models.BooleanField(_('Есть микрочип'), default=False)
     collar_details = models.CharField(_('Детали ошейника'), max_length=255, blank=True)
@@ -325,29 +330,26 @@ class LostFoundAnnouncement(models.Model):
     # Search history tracking
     search_history = models.JSONField(_('История поиска'), null=True, blank=True)
     search_areas = models.JSONField(_('Зоны поиска'), null=True, blank=True)
-    contacted_users = ArrayField(
-        models.IntegerField(),
-        verbose_name=_('Контакты с пользователями'),
-        null=True,
-        blank=True
-    )
+    contacted_users = models.TextField(_('Контактированные пользователи'), default='[]')  # JSON строка для хранения списка пользователей
     
     class Meta:
         verbose_name = _('Объявление о потере/находке')
         verbose_name_plural = _('Объявления о потере/находке')
         indexes = [
-            models.Index(fields=['type', 'animal_type']),
+            models.Index(fields=['type']),
+            models.Index(fields=['animal_type']),
             models.Index(fields=['date_lost_found']),
-            models.Index(fields=['location']),
-            models.Index(fields=['latitude', 'longitude']),
         ]
-        
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
+    
+    def get_contacted_users(self):
+        return json.loads(self.contacted_users)
+    
+    def set_contacted_users(self, users_list):
+        self.contacted_users = json.dumps(users_list)
 
 class AnnouncementImage(models.Model):
     announcement = models.ForeignKey(Announcement, verbose_name=_('Объявление'),
-                                   on_delete=models.CASCADE, related_name='images')
+                                   on_delete=models.CASCADE, related_name='announcement_images')
     image = models.ImageField(_('Изображение'), upload_to='announcements/')
     is_main = models.BooleanField(_('Главное изображение'), default=False)
     created_at = models.DateTimeField(_('Создано'), auto_now_add=True)
@@ -384,8 +386,9 @@ class LostPet(models.Model):
     chip_number = models.CharField(_('Номер чипа'), max_length=50, blank=True)
     
     # Геолокация
-    last_seen_location = gis_models.PointField(_('Место последней встречи'))
-    last_seen_address = models.CharField(_('Адрес последней встречи'), max_length=255)
+    last_seen_location = models.CharField(_('Место последней встречи'), max_length=255)
+    last_seen_latitude = models.DecimalField(_('Широта последней встречи'), max_digits=9, decimal_places=6, null=True, blank=True)
+    last_seen_longitude = models.DecimalField(_('Долгота последней встречи'), max_digits=9, decimal_places=6, null=True, blank=True)
     search_radius = models.IntegerField(_('Радиус поиска (км)'), default=5)
     
     # Контактная информация
@@ -404,38 +407,24 @@ class LostPet(models.Model):
         verbose_name = _('Потерянное животное')
         verbose_name_plural = _('Потерянные животные')
         indexes = [
-            models.Index(fields=['status', 'is_active']),
-            models.Index(fields=['pet_type', 'breed']),
+            models.Index(fields=['status']),
             models.Index(fields=['date_lost_found']),
+            models.Index(fields=['is_active']),
         ]
     
     def __str__(self):
-        return f"{self.get_status_display()} {self.pet_type} - {self.last_seen_address}"
+        return f"{self.pet_type} - {self.status}"
     
     def save(self, *args, **kwargs):
         # Обновляем дату изменения объявления
-        self.announcement.updated_at = timezone.now()
         self.announcement.save()
         super().save(*args, **kwargs)
     
     @property
     def location_coordinates(self):
-        return {
-            'latitude': self.last_seen_location.y,
-            'longitude': self.last_seen_location.x
-        }
-    
-    def get_similar_cases(self, radius_km=None):
-        """Поиск похожих случаев в заданном радиусе"""
-        if radius_km is None:
-            radius_km = self.search_radius
-        
-        return LostPet.objects.filter(
-            is_active=True,
-            last_seen_location__distance_lte=(
-                self.last_seen_location,
-                Distance(km=radius_km)
-            ),
-            pet_type=self.pet_type,
-            status__in=['lost', 'found']
-        ).exclude(id=self.id)
+        if self.last_seen_latitude and self.last_seen_longitude:
+            return {
+                'latitude': self.last_seen_latitude,
+                'longitude': self.last_seen_longitude
+            }
+        return None
