@@ -1,6 +1,0 @@
-markdown
-django-crispy-forms
-
-coverage[toml]
-pytz
-unittest-xml-reporting

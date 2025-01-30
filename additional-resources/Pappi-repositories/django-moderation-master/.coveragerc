@@ -1,6 +1,0 @@
-[run]
-include =
-    moderation*
-omit =
-    */tests*
-    example_project*

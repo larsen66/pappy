@@ -1,4 +1,0 @@
-[run]
-source = fluent_contents/
-omit =
-    */migrations/*
