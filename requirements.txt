@@ -9,7 +9,6 @@ annotated-types==0.7.0
 anthropic==0.45.2
 anyio==4.7.0
 appdirs==1.4.4
-archspec @ file:///croot/archspec_1709217642129/work
 asgiref==3.8.1
 asttokens==3.0.0
 attrs==25.1.0
@@ -21,16 +20,13 @@ bcrypt==4.2.1
 beautifulsoup4==4.12.3
 billiard==4.2.1
 blinker==1.9.0
-boltons @ file:///Users/builder/cbouss/perseverance-python-buildout/croot/boltons_1699240838368/work
 boto3==1.36.13
 botocore==1.36.13
-Brotli @ file:///private/var/folders/k1/30mswbxs7r1g6zwn8y4fyt500000gp/T/abs_27zk0eqdh0/croot/brotli-split_1714483157007/work
 build==1.2.2.post1
 CacheControl==0.14.2
 cachetools==5.5.1
 celery==5.4.0
 certifi==2024.12.14
-cffi @ file:///private/var/folders/nz/j6p8yfhx1mv_0grj5xl4650h0000gp/T/abs_06ndtibm2c/croot/cffi_1726856446111/work
 channels==4.2.0
 channels_redis==4.2.1
 charset-normalizer==3.4.1
@@ -43,12 +39,6 @@ click-repl==0.3.0
 cohere==5.13.11
 colorama==0.4.6
 coloredlogs==15.0.1
-conda @ file:///private/var/folders/k1/30mswbxs7r1g6zwn8y4fyt500000gp/T/abs_1fyf6atcn3/croot/conda_1733841827946/work
-conda-anaconda-telemetry @ file:///private/var/folders/nz/j6p8yfhx1mv_0grj5xl4650h0000gp/T/abs_3cfn48l126/croot/conda-anaconda-telemetry_1733258799801/work
-conda-content-trust @ file:///private/var/folders/nz/j6p8yfhx1mv_0grj5xl4650h0000gp/T/abs_9fusbfzixa/croot/conda-content-trust_1714483157715/work
-conda-libmamba-solver @ file:///croot/conda-libmamba-solver_1727775630457/work/src
-conda-package-handling @ file:///private/var/folders/k1/30mswbxs7r1g6zwn8y4fyt500000gp/T/abs_82jv6q9ech/croot/conda-package-handling_1731369032774/work
-conda_package_streaming @ file:///private/var/folders/k1/30mswbxs7r1g6zwn8y4fyt500000gp/T/abs_2el5nlypud/croot/conda-package-streaming_1731366187356/work
 constantly==23.10.4
 coverage==7.6.10
 cryptography==44.0.0
@@ -58,7 +48,6 @@ decorator==5.1.1
 defusedxml==0.7.1
 Deprecated==1.2.18
 deprecation==2.1.0
-distro @ file:///private/var/folders/nz/j6p8yfhx1mv_0grj5xl4650h0000gp/T/abs_ddkyz0575y/croot/distro_1714488254309/work
 Django==5.1.5
 django-allauth==65.3.1
 django-celery-results==2.5.1
@@ -97,7 +86,6 @@ firebase-admin==6.5.0
 flake8==5.0.4
 flake8-docstrings==1.7.0
 flatbuffers==25.1.24
-frozendict @ file:///private/var/folders/k1/30mswbxs7r1g6zwn8y4fyt500000gp/T/abs_8b0cest_id/croot/frozendict_1713194839836/work
 frozenlist==1.5.0
 fsspec==2025.2.0
 geographiclib==2.0
@@ -142,7 +130,6 @@ incremental==24.7.2
 iniconfig==2.0.0
 instructor==1.7.2
 ipython==8.32.0
-jarvis_crew @ file:///Users/nubmaster/Agency/Agents/Ours/jarvis_crew
 jedi==0.19.2
 Jinja2==3.1.5
 jiter==0.8.2
@@ -150,7 +137,6 @@ jmespath==1.0.1
 jsbeautifier==1.15.1
 json5==0.10.0
 json_repair==0.35.0
-jsonpatch @ file:///private/var/folders/k1/30mswbxs7r1g6zwn8y4fyt500000gp/T/abs_3ajyoz8zoj/croot/jsonpatch_1714483362270/work
 jsonpickle==4.0.1
 jsonpointer==2.1
 jsonref==1.1.0
@@ -170,7 +156,6 @@ langchain-openai==0.2.14
 langchain-text-splitters==0.3.5
 langsmith==0.1.147
 langtrace-python-sdk==3.5.1
-libmambapy @ file:///private/var/folders/k1/30mswbxs7r1g6zwn8y4fyt500000gp/T/abs_d5syec3wec/croot/mamba-split_1732896308505/work/libmambapy
 litellm==1.59.8
 Mako==1.3.8
 markdown-it-py==3.0.0
@@ -180,7 +165,6 @@ matplotlib-inline==0.1.7
 mccabe==0.7.0
 mdurl==0.1.2
 mem0ai==0.1.48
-menuinst @ file:///private/var/folders/nz/j6p8yfhx1mv_0grj5xl4650h0000gp/T/abs_46xe5v9lzp/croot/menuinst_1731364926974/work
 mmh3==5.1.0
 monotonic==1.6
 mpmath==1.3.0
@@ -220,9 +204,7 @@ pep8-naming==0.13.3
 pexpect==4.9.0
 phonenumbers==8.13.53
 pillow==11.1.0
-platformdirs @ file:///Users/builder/cbouss/perseverance-python-buildout/croot/platformdirs_1701803010714/work
 plotly==6.0.0
-pluggy @ file:///private/var/folders/nz/j6p8yfhx1mv_0grj5xl4650h0000gp/T/abs_bei6q1cvvt/croot/pluggy_1733169621717/work
 portalocker==2.10.1
 posthog==3.11.0
 prompt_toolkit==3.0.50
@@ -237,7 +219,6 @@ pyarrow==19.0.0
 pyasn1==0.6.1
 pyasn1_modules==0.4.1
 pycodestyle==2.9.1
-pycosat @ file:///private/var/folders/nz/j6p8yfhx1mv_0grj5xl4650h0000gp/T/abs_19qelmdbl6/croot/pycosat_1714510743067/work
 pycparser==2.22
 pydantic==2.10.5
 pydantic-settings==2.7.1
@@ -256,7 +237,6 @@ PyPika==0.48.9
 pyproject_hooks==1.2.0
 pyright==1.1.393
 pysbd==0.3.4
-PySocks @ file:///Users/builder/cbouss/perseverance-python-buildout/croot/pysocks_1699237568675/work
 pytest==7.1.3
 pytest-django==4.5.2
 pytest-pythonpath==0.7.3
@@ -272,14 +252,11 @@ qrcode==8.0
 redis==5.2.1
 referencing==0.36.2
 regex==2024.11.6
-requests @ file:///private/var/folders/nz/j6p8yfhx1mv_0grj5xl4650h0000gp/T/abs_ee45nsd33z/croot/requests_1730999134038/work
 requests-oauthlib==2.0.0
 requests-toolbelt==1.0.0
 rich==13.9.4
 rpds-py==0.22.3
 rsa==4.9
-ruamel.yaml @ file:///private/var/folders/nz/j6p8yfhx1mv_0grj5xl4650h0000gp/T/abs_35yvtl3p84/croot/ruamel.yaml_1727980165481/work
-ruamel.yaml.clib @ file:///private/var/folders/nz/j6p8yfhx1mv_0grj5xl4650h0000gp/T/abs_70l_orv46q/croot/ruamel.yaml.clib_1727769819918/work
 s3transfer==0.11.2
 safetensors==0.5.2
 schema==0.7.7
@@ -314,7 +291,6 @@ tqdm==4.67.1
 trace-attributes==7.1.2
 traitlets==5.14.3
 transformers==4.46.3
-truststore @ file:///Users/builder/cbouss/perseverance-python-buildout/croot/truststore_1701805928787/work
 twilio==9.4.3
 Twisted==24.11.0
 txaio==23.1.1
@@ -342,4 +318,3 @@ wrapt==1.17.2
 yarl==1.18.3
 zipp==3.21.0
 zope.interface==7.2
-zstandard @ file:///private/var/folders/k1/30mswbxs7r1g6zwn8y4fyt500000gp/T/abs_a5_i6g4o6n/croot/zstandard_1731356352787/work
